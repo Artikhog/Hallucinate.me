@@ -154,10 +154,7 @@ class DatabaseHelper:
         return doc["points"] if doc else 0
 
     def get_all_scores(self):
-        return list(
-            self.scores.find({}, {"_id": 0})
-            .sort("points", -1)
-        )
+        return list(self.scores.find({}, {"_id": 0}).sort("points", -1))
 
     # returns id
     def start_history(self, login: str, level_id):
@@ -201,7 +198,7 @@ class DatabaseHelper:
         )
 
     def get_user_chat_history(self, history_id):
-        return self.chat_histories.find_one({"_id": history_id})
+        return self.chat_histories.find_one({"_id": history_id}, {"_id": 0})
 
     def get_user_chat_histories(self, login: str):
         return [
@@ -234,6 +231,7 @@ class DatabaseHelper:
         self.users.delete_many({})
         self.scores.delete_many({})
         self.chat_histories.delete_many({})
+        self.levels.delete_many({})
 
 
 db = DatabaseHelper()

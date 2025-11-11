@@ -15,45 +15,40 @@ if __name__ == "__main__":
     assert not db.authenticate_user("login2", "123")
 
     level_id = db.crete_level({"base_score": 100})
-    assert db.get_score("login1") == 0
-    assert db.add_score("login1", level_id)
-    assert db.add_score("login1", level_id)
-    assert db.get_score("login1") == 30
-    assert db.get_score("login2") == 0
-    assert db.add_score("login2", level_id)
-    assert db.add_score("login2", level_id)
-    assert db.add_score("login2", level_id)
-    assert db.get_score("login2") == 10
 
-    assert db.get_all_scores() == [
-        {"login": "login1", "points": 30},
-        {"login": "login2", "points": 10},
-        {"login": "login3", "points": 0},
-    ]
+    session_id = db.start_history("login1", level_id)
+    db.update_history(session_id, "short chat", "USER")
+    result = db.get_user_chat_history(session_id)
+    del result["updated_at"]
+    assert result == {
+        "login": "login1",
+        "data": [{"text": "short chat", "type": "USER"}],
+        "level_id": level_id,
+        "is_valid": False,
+    }
 
-    assert db.add_score("login3", 300)
-    assert db.get_all_scores() == [
-        {"login": "login3", "points": 300},
-        {"login": "login1", "points": 30},
-        {"login": "login2", "points": 10},
-    ]
-
-    id = db.start_history("login1", 1)
-    db.update_history(id, "short chat", "USER")
-    assert db.get_user_chat_history(id) == [{"text": "short chat", "type": "USER"}]
     assert db.get_user_chat_histories("login1") == [
         [{"text": "short chat", "type": "USER"}]
     ]
-    db.update_history(id, "long chat", "LLM")
-    assert db.get_user_chat_history(id) == [
-        {"text": "short chat", "type": "USER"},
-        {"text": "long chat", "type": "LLM"},
-    ]
+    db.update_history(session_id, "long chat", "LLM")
+    result = db.get_user_chat_history(session_id)
+    del result["updated_at"]
+    assert result == {
+        "login": "login1",
+        "data": [
+            {"text": "short chat", "type": "USER"},
+            {"text": "long chat", "type": "LLM"},
+        ],
+        "level_id": level_id,
+        "is_valid": False,
+    }
     assert db.get_user_chat_histories("login1") == [
         [{"text": "short chat", "type": "USER"}, {"text": "long chat", "type": "LLM"}]
     ]
-    id2 = db.start_history("login1", 2)
-    db.update_history(id2, "new chat", "ASSISTENT")
+
+    level_id_2 = db.crete_level({"base_score": 300})
+    session_id2 = db.start_history("login1", level_id_2)
+    db.update_history(session_id2, "new chat", "ASSISTENT")
     assert db.get_user_chat_histories("login1") == [
         [{"text": "new chat", "type": "ASSISTENT"}],
         [{"text": "short chat", "type": "USER"}, {"text": "long chat", "type": "LLM"}],
@@ -63,6 +58,17 @@ if __name__ == "__main__":
     db.delete_user("login3")
     assert db.get_all_users() == ["login1", "login2"]
     assert db.get_all_scores() == [
-        {"login": "login1", "points": 30},
-        {"login": "login2", "points": 10},
+        {"login": "login1", "points": 0},
+        {"login": "login2", "points": 0},
+    ]
+
+    assert db.get_score("login1") == 0
+    assert db.add_score("login1", session_id)
+    assert db.add_score("login1", session_id2)
+    assert db.get_score("login1") == 100 + 300
+    assert db.get_score("login2") == 0
+
+    assert db.get_all_scores() == [
+        {"login": "login1", "points": 100 + 300},
+        {"login": "login2", "points": 0},
     ]
