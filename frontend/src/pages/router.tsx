@@ -1,7 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { NotFoundPage } from './notFound/NotFoundPage';
 import { LoginPage } from './login/LoginPage';
-import { RoundsPage } from './rounds/RoundsPage';
+import { LevelsPage } from './levels/LevelsPage';
 import { ChatPage } from './chat/ChatPage';
 import { HomePage } from './home/HomePage';
 import { LeaderBoardPage } from './leaderBoard/LeaderBoardPage';
@@ -44,8 +44,8 @@ export const router = createBrowserRouter([
         ),
         children: [
             {
-                path: 'rounds',
-                element: <RoundsPage />,
+                path: 'levels',
+                element: <LevelsPage />,
             },
             {
                 path: 'chat',

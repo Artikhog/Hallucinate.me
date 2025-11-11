@@ -1,15 +1,12 @@
-import axios from 'axios';
+import { Api } from './api';
 
 // Базовый URL API
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Создаем экземпляр axios
-export const api = axios.create({
+export const apiClient = new Api({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+})
 
 // Интерфейс для токенов
 export interface Tokens {

@@ -31,7 +31,7 @@ const navItems = [
   },
   {
     title: "Раунды",
-    url: "/rounds",
+    url: "/levels",
     icon: Target,
   },
   {
