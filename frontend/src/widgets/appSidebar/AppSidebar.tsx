@@ -23,7 +23,7 @@ const items = [
   },
   {
     title: "Раунды", 
-    url: "/rounds",
+    url: "/levels",
     icon: Target,
   },
   {

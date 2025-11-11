@@ -5,7 +5,6 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/shared/ui/shadcn/ui/breadcrumb"
-import { NavActions } from "@/shared/ui/shadcn/nav-actions"
 import { Separator } from "@/shared/ui/shadcn/ui/separator"
 import {
   SidebarInset,

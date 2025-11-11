@@ -1,7 +1,7 @@
-import { api, tokenService, type Tokens } from './base';
+import { apiClient, tokenService } from './base';
 
 // Интерцептор для добавления токена к запросам
-api.interceptors.request.use(
+apiClient.instance.interceptors.request.use(
     (config) => {
         const token = tokenService.getAccessToken();
         if (token) {
@@ -15,7 +15,7 @@ api.interceptors.request.use(
 );
 
 // Интерцептор для обработки ошибок и refresh токена
-api.interceptors.response.use(
+apiClient.instance.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
@@ -28,7 +28,7 @@ api.interceptors.response.use(
                 const refreshToken = tokenService.getRefreshToken();
                 if (refreshToken) {
                     // Запрос на обновление токена
-                    const response = await api.post('/auth/refresh', {
+                    const response = await apiClient.instance.post('/auth/refresh', {
                         refreshToken
                     });
 
@@ -41,7 +41,7 @@ api.interceptors.response.use(
 
                     // Повторяем оригинальный запрос с новым токеном
                     originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-                    return api(originalRequest);
+                    return apiClient.instance(originalRequest);
                 }
             } catch (refreshError) {
                 // Если refresh не удался, разлогиниваем пользователя

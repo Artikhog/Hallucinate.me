@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { authApi, type LoginCredentials, type RegisterData, type AuthResponse } from '../api/auth-api';
-import { tokenService, type Tokens } from '@/shared/api/base';
+import { tokenService } from '@/shared/api/base';
 
 export interface User {
   id: string;
