@@ -1,4 +1,4 @@
-from api.models.session import GameSession, Message, HallucinationReport, SessionStatus
+from api.models.session import GameSession, Message, HallucinationReport
 from datetime import datetime
 from mongodb.db_helper import db
 import uuid
@@ -14,7 +14,7 @@ async def get_user_session(session_id: str) -> GameSession:
     return GameSession(
         id=session_id,
         level_id=data["level_id"],
-        username=data["username"],
+        username=data["login"],
         messages=[
             Message(role=doc["type"], content=doc["text"]) for doc in data["data"]
         ],

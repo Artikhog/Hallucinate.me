@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 from urllib.parse import quote_plus as quote
 import certifi
 import os
+from bson import objectid
 
-from mongo_mock import TableMock
+# TODO: uncomment for local testing
+# from mongo_mock import TableMock
 
 load_dotenv()
 
@@ -26,7 +28,7 @@ def maybe_print(s):
 
 def fix_id(doc):
     if "_id" in doc:
-        doc["id"] = doc["_id"]
+        doc["id"] = str(doc["_id"])
         del doc["_id"]
     return doc
 
@@ -175,11 +177,11 @@ class DatabaseHelper:
             }
         )
 
-        return result.inserted_id if result else None
+        return str(result.inserted_id) if result else None
 
     def update_history(self, history_id, new_data_text, type):
         return self.chat_histories.update_one(
-            {"_id": history_id},
+            {"_id": objectid.ObjectId(history_id)},
             {
                 "$push": {"data": {"text": new_data_text, "type": type}},
                 "$set": {"updated_at": datetime.now()},
@@ -188,13 +190,13 @@ class DatabaseHelper:
 
     def save_user_report(self, history_id, report):
         return self.chat_histories.update_one(
-            {"_id": history_id},
+            {"_id": objectid.ObjectId(history_id)},
             {"$set": {"updated_at": datetime.now(), "report": report}},
         )
 
     def save_assistant_verdict(self, history_id, verdict, is_valid):
         return self.chat_histories.update_one(
-            {"_id": history_id},
+            {"_id": objectid.ObjectId(history_id)},
             {
                 "$set": {
                     "updated_at": datetime.now(),
@@ -205,7 +207,7 @@ class DatabaseHelper:
         )
 
     def get_user_chat_history(self, history_id):
-        return self.chat_histories.find_one({"_id": history_id}, {"_id": 0})
+        return self.chat_histories.find_one({"_id": objectid.ObjectId(history_id)}, {"_id": 0})
 
     def get_user_chat_histories(self, login: str):
         return [
@@ -232,7 +234,7 @@ class DatabaseHelper:
         return self.levels.insert_one(data).inserted_id
 
     def get_level(self, level_id):
-        return self.levels.find_one({"_id": level_id})
+        return self.levels.find_one({"_id": objectid.ObjectId(level_id)})
 
     def get_all_levels(self):
         return [fix_id(doc) for doc in self.levels.find({})]

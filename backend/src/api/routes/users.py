@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from api.models.request_response import UserStats
-from api.models.session import GameSession, SessionStatus, Message
+from api.models.session import GameSession, Message
 from api.dependencies import get_current_user
 from mongodb.db_helper import db
 import uuid
@@ -19,7 +19,7 @@ async def get_user_stats(current_user: dict = Depends(get_current_user)):
 
     leaderboard = db.get_all_scores()
     global_rank = leaderboard.index(
-        {"points": score, "username": current_user.username}
+        {"points": score, "login": current_user.username}
     )
 
     assert global_rank

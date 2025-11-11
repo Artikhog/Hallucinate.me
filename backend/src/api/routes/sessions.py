@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from api.models.session import GameSession, Message, HallucinationReport, SessionStatus
+from api.models.session import GameSession, Message, HallucinationReport
 from api.models.user import User
 from api.dependencies import get_current_user
 from api.services.game_service import (
@@ -30,7 +30,7 @@ async def start_game_session(
 async def get_session_info(
     session_id: str, current_user: User = Depends(get_current_user)
 ):
-    session = await get_user_session(session_id, current_user["id"])
+    session = await get_user_session(session_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
@@ -38,6 +38,7 @@ async def get_session_info(
     return session
 
 
+# TODO: почему в query message, а не в body ?
 @router.post("/{session_id}/message")
 async def send_user_message(
     session_id: str, message: str, current_user: User = Depends(get_current_user)
@@ -47,11 +48,6 @@ async def send_user_message(
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
-        )
-
-    if session.status != SessionStatus.ACTIVE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Session is not active"
         )
 
     await add_message_to_session(session_id, "user", message)
@@ -83,17 +79,22 @@ async def report_hallucination(
     report: HallucinationReport,
     current_user: User = Depends(get_current_user),
 ):
-    session = await get_user_session(session_id, current_user["id"])
+    session = await get_user_session(session_id)
 
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    db.save_user_report(session_id, report)
+    db.save_user_report(
+        session_id,
+        {"incorrect_fact": report.incorrect_fact, "source_url": report.source_url},
+    )
     validation_result = await validate_hallucination_report(report)
 
-    db.save_assistant_verdict(session_id, validation_result, validation_result["is_valid"])
+    db.save_assistant_verdict(
+        session_id, validation_result, validation_result["is_valid"]
+    )
 
     if validation_result["is_valid"]:
         db.add_score(current_user.username, session_id)

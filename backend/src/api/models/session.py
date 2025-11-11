@@ -12,7 +12,6 @@ class Message(BaseModel):
     content: str
 
 class HallucinationReport(BaseModel):
-    message_id: str
     incorrect_fact: str
     source_url: str
 
