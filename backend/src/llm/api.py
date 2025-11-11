@@ -55,7 +55,7 @@ class LLM:
         new_message: Message,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = None
-    ) -> Iterator[str]:
+    ):
         """
         Отправляет запрос в OpenAI API и возвращает ответ стримом
         
@@ -70,7 +70,7 @@ class LLM:
         try:
             stream = self.client.chat.completions.create(
                 model=self.model,
-                messages=[history] + [new_message.to_dict()],
+                messages=history + [new_message.to_dict()],
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True

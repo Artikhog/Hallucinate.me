@@ -35,11 +35,11 @@ export function ChatSection() {
   return (
     <ChatSectionUI
       handler={handler}
-      className="block h-full flex-row gap-6 p-0 md:flex"
+      className="block h-full flex-row gap-6 p-0 md:flex w-full"
     >
       <div className="flex h-full min-w-0 flex-1 flex-col">
-        <ChatMessages className="flex-1 overflow-hidden">
-          <ChatMessages.List className="mx-auto h-full max-w-4xl space-y-8 overflow-y-auto px-4 py-8 md:px-8">
+        <ChatMessages className="flex-1 overflow-hidden w-full h-[calc(100vh-100px)]">
+          <ChatMessages.List className="mx-auto w-full max-w-[80%] space-y-8 overflow-y-auto px-2 py-8 md:px-8 h-full max-h-[calc(100vh-300px)]">
             <CustomChatMessages />
           </ChatMessages.List>
           <ChatMessages.Loading>
@@ -50,8 +50,7 @@ export function ChatSection() {
             subheading="Ask me anything to get started"
           />
         </ChatMessages>
-        <div className="border-t">
-          <div className="mx-auto max-w-4xl px-4 py-4 md:px-8 md:py-6">
+          <div className="mx-auto max-w-4xl px-4 md:px-8 md:py-6 w-full">
             <ChatInput>
               <ChatInput.Form className="relative">
                 <ChatInput.Field 
@@ -69,7 +68,6 @@ export function ChatSection() {
             </ChatInput>
           </div>
         </div>
-      </div>
       <ChatCanvas className="w-full md:w-2/5" />
     </ChatSectionUI>
   )
@@ -104,7 +102,7 @@ function CustomChatMessages() {
           >
             {message.role === 'assistant' && (
               <ChatMessage.Avatar className="shrink-0 self-start">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-semibold">
                   AI
                 </div>
               </ChatMessage.Avatar>
@@ -112,7 +110,7 @@ function CustomChatMessages() {
             
             <div className={`flex min-w-0 flex-1 flex-col gap-2 ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
               {message.role === 'user' && (
-                <div className="rounded-2xl bg-muted px-4 py-2.5">
+                <div className="rounded-2xl px-4 py-2.5">
                   <ChatMessage.Content className="text-sm">
                     <ChatMessage.Part.Markdown />
                   </ChatMessage.Content>
@@ -267,68 +265,107 @@ function useChat(): ChatHandler {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Read SSE stream
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let streamedContent = ''
-
-      if (!reader) {
+      if (!response.body) {
         throw new Error('Response body is not readable')
       }
 
-      while (true) {
-        const { done, value } = await reader.read()
-        
-        if (done) {
-          break
-        }
+      // Используем ReadableStream для чтения потока
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let streamedContent = ''
+      let buffer = ''
 
-        // Decode chunk
-        const chunk = decoder.decode(value, { stream: true })
-        const lines = chunk.split('\n')
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          
+          if (done) {
+            break
+          }
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6) // Remove 'data: ' prefix
-            
-            // Check for completion signal
-            if (data.trim() === '[DONE]') {
-              setStatus('ready')
-              return
-            }
+          // Декодируем chunk и добавляем в буфер
+          buffer += decoder.decode(value, { stream: true })
+          
+          // Обрабатываем все полные SSE сообщения из буфера
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // Оставляем неполную строку в буфере
 
-            try {
-              const parsed = JSON.parse(data)
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim() // Remove 'data: ' prefix
               
-              if (parsed.content) {
-                streamedContent += parsed.content
+              // Check for completion signal
+              if (data === '[DONE]') {
+                setStatus('ready')
+                return
+              }
+
+              try {
+                const parsed = JSON.parse(data)
                 
-                // Update the assistant message with streamed content
-                setMessages(prev => {
-                  return prev.map(msg => 
-                    msg.id === assistantMessageId
-                      ? {
-                          ...msg,
-                          parts: [{ type: 'text', text: streamedContent }],
-                        }
-                      : msg
-                  )
-                })
-              } else if (parsed.error) {
-                throw new Error(parsed.error)
+                if (parsed.content) {
+                  streamedContent += parsed.content
+                  
+                  // Update the assistant message with streamed content
+                  setMessages(prev => {
+                    return prev.map(msg => 
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            parts: [{ type: 'text', text: streamedContent }],
+                          }
+                        : msg
+                    )
+                  })
+                } else if (parsed.error) {
+                  throw new Error(parsed.error)
+                }
+              } catch (e) {
+                // Skip invalid JSON (might be partial chunk)
+                if (e instanceof SyntaxError) {
+                  continue
+                }
+                throw e
               }
-            } catch (e) {
-              // Skip invalid JSON (might be partial chunk)
-              if (e instanceof SyntaxError) {
-                continue
-              }
-              throw e
             }
           }
         }
-      }
 
-      setStatus('ready')
+        // Обрабатываем оставшийся буфер
+        if (buffer.trim()) {
+          const lines = buffer.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim()
+              if (data === '[DONE]') {
+                break
+              }
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.content) {
+                  streamedContent += parsed.content
+                  setMessages(prev => {
+                    return prev.map(msg => 
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            parts: [{ type: 'text', text: streamedContent }],
+                          }
+                        : msg
+                    )
+                  })
+                }
+              } catch {
+                // Ignore parsing errors for incomplete data
+              }
+            }
+          }
+        }
+
+        setStatus('ready')
+      } finally {
+        reader.releaseLock()
+      }
     } catch (error) {
       console.error('Error sending message:', error)
       setStatus('error')

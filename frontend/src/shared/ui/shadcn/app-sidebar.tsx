@@ -72,10 +72,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild size="lg">
                   <Link to="/">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                      <MessageSquare className="size-4" />
+                    <div className="flex aspect-square size-6 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                      <MessageSquare className="size-3" />
                     </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
+                    <div className="flex flex-col gap-0.5 leading-none data-[variant=inset]:hidden">
                       <span className="font-semibold">Hallucinate.me</span>
                       <span className="text-xs">AI Chat Game</span>
                     </div>

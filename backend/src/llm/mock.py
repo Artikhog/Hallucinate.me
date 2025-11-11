@@ -1,10 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 import json
 import asyncio
+import api as llm_api
+import os
+import dotenv
+
+dotenv.load_dotenv()  
 
 app = FastAPI(title="Hallucinate.me Mock API")
 
@@ -65,56 +70,41 @@ async def root():
 
 @app.post("/api/chat/stream")
 async def chat_stream(request: ChatRequest):
-    """
-    Эндпоинт для получения ответа от LLM стримом (mock версия)
-    
-    Принимает:
-    - history: список сообщений в формате [{"role": "user", "content": "..."}]
-    - message: новое сообщение пользователя
-    - temperature: температура генерации (опционально)
-    - max_tokens: максимальное количество токенов (опционально)
-    
-    Возвращает: стрим текста ответа
-    """
-    try:
-        # Генерируем mock ответ
-        mock_response = generate_mock_response(request.message)
-        
-        def generate():
-            """Генератор для стриминга ответа"""
-            try:
-                # Разбиваем ответ на слова для имитации стриминга
-                words = mock_response.split(' ')
-                
-                for i, word in enumerate(words):
-                    # Добавляем пробел перед словом (кроме первого)
-                    chunk = (' ' if i > 0 else '') + word
-                    
-                    # Отправляем chunk в формате Server-Sent Events
-                    yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
-                    
-                    # Имитируем задержку для реалистичного стриминга
-                    # Note: В генераторе используем time.sleep, так как это синхронный генератор
-                    import time
-                    time.sleep(0.05)  # 50ms задержка между словами
-                
-                # Отправляем сигнал завершения
-                yield "data: [DONE]\n\n"
-            except Exception as e:
-                error_data = json.dumps({"error": str(e)}, ensure_ascii=False)
-                yield f"data: {error_data}\n\n"
-        
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка при обработке запроса: {str(e)}")
+    llm_client = llm_api.LLM(
+        model="openrouter/polaris-alpha",
+        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_URL"),
+    )
+
+    history_dicts = [msg.model_dump() for msg in request.history]
+
+    def generator():
+        try:
+            for chunk in llm_client.chat_stream(
+                history_dicts,
+                llm_api.Message(request.message),
+                request.temperature,
+                request.max_tokens
+            ):
+                # Отправляем в формате SSE с JSON
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+        except Exception as e:
+            error_data = json.dumps({"error": str(e)}, ensure_ascii=False)
+            yield f"data: {error_data}\n\n"
+        finally:
+            # Закрывающий маркер
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/chat")
