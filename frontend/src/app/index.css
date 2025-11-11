@@ -153,3 +153,26 @@
   }
 }
 
+@layer components {
+  /* Chat UI improvements */
+  [data-chat-section] {
+    @apply flex flex-col h-full;
+  }
+
+  /* Message styling improvements */
+  [data-chat-message] {
+    @apply transition-all duration-200;
+  }
+
+  /* Input area improvements */
+  [data-chat-input] {
+    @apply border-t border-border bg-card;
+  }
+
+  /* Smooth scrolling */
+  [data-chat-messages] {
+    @apply scroll-smooth;
+  }
+}
+
+@source '../node_modules/@llamaindex/chat-ui/**/*.{ts,tsx}';

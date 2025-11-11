@@ -3,7 +3,6 @@ import {
   Sidebar, 
   SidebarContent, 
   SidebarGroup, 
-  SidebarGroupLabel,
   SidebarGroupContent, 
   SidebarMenu, 
   SidebarMenuItem, 
