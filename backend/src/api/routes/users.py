@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends
 from api.models.request_response import UserStats
+from api.models.session import GameSession, SessionStatus
 from api.dependencies import get_current_user
+import uuid
+import datetime
 
 router = APIRouter()
 
@@ -14,3 +17,17 @@ async def get_user_stats(current_user: dict = Depends(get_current_user)):
         successful_reports=3,
         global_rank=10
     )
+
+
+@router.get("/me/sessions", response_model=list[GameSession])
+async def get_user_stats(current_user: dict = Depends(get_current_user)):
+    # TODO: Реализовать получение сессий из БД
+    return list(GameSession(
+        id = str(uuid.uuid4()),
+        level_id = str(uuid.uuid4()),
+        user_id = str(uuid.uuid4()),
+        status = SessionStatus.ACTIVE,
+        created_at = datetime.datetime(),
+        completed_at = datetime.datetime(),
+        messages = []
+    ))
