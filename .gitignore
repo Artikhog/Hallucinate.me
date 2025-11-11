@@ -1,2 +1,30 @@
+# Environment variables
 .env
+.env.local
+.env.production
+
+# Secrets
+yandex_ca.pem
+
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Frontend
+/frontend/node_modules
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,204 @@
+from pymongo import MongoClient
+from datetime import datetime
+from dotenv import load_dotenv
+from urllib.parse import quote_plus as quote
+import certifi
+import os
+
+from mongo_mock import TableMock
+
+load_dotenv()
+
+# from .env
+MONGO_HOSTS = os.getenv("MONGO_HOSTS")
+MONGO_DB = os.getenv("MONGO_DB")
+MONGO_USER = os.getenv("MONGO_USER")
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+MONGO_REPLICA_SET = os.getenv("MONGO_REPLICA_SET", "rs01")
+
+MONGO_SILENT = os.getenv("MONGO_SILENT", "false") == "true"
+
+
+def maybe_print(s):
+    if not MONGO_SILENT:
+        print(s)
+
+
+def download_yandex_ca_certificate():
+    import urllib.request
+
+    cert_url = "https://storage.yandexcloud.net/cloud-certs/CA.pem"
+    cert_path = "yandex_ca.pem"
+
+    if not os.path.exists(cert_path):
+        try:
+            urllib.request.urlretrieve(cert_url, cert_path)
+            maybe_print(f"✅ Sert successfully downloaded: {cert_path}")
+        except Exception as e:
+            maybe_print(f"❌ Unable to download a sert: {e}")
+            return None
+    else:
+        maybe_print(f"✅ Using existing sert: {cert_path}")
+    return cert_path
+
+
+def connect_to_mongodb(db_name):
+    try:
+        if not db_name:
+            db_name = MONGO_DB
+        cert_path = download_yandex_ca_certificate()
+        if not cert_path:
+            cert_path = certifi.where()
+            maybe_print(f"⚠️ using default serts: certifi")
+
+        hosts = MONGO_HOSTS.split(",")
+
+        url = "mongodb://{user}:{pw}@{hosts}/?replicaSet={rs}&authSource={auth_src}".format(
+            user=quote(MONGO_USER),
+            pw=quote(MONGO_PASSWORD),
+            hosts=",".join(hosts),
+            rs=MONGO_REPLICA_SET,
+            auth_src=db_name,
+        )
+
+        client = MongoClient(
+            url, tls=True, tlsCAFile=cert_path, serverSelectionTimeoutMS=5000
+        )
+
+        client.admin.command("ping")
+        maybe_print("✅ Connected to MongoDB")
+
+        return client[db_name]
+
+    except Exception as e:
+        maybe_print(f"❌ Error during connection: {e}")
+        return None
+
+
+def init_collections(db):
+    # login - password hash
+    if "users" not in db.list_collection_names():
+        users = db.create_collection("users")
+        users.create_index("login", unique=True)
+        maybe_print("✅ 'users' collection created")
+
+    # login - points
+    if "scores" not in db.list_collection_names():
+        scores = db.create_collection("scores")
+        scores.create_index("login", unique=True)
+        maybe_print("✅ 'scores' collection created")
+
+    # login - history - updated_at
+    if "chat_histories" not in db.list_collection_names():
+        chat_histories = db.create_collection("chat_histories")
+        chat_histories.create_index([("login", 1), ("updated_at", -1)])
+
+
+class DatabaseHelper:
+    def __init__(self, db_name=None):
+        self.db = connect_to_mongodb(db_name)
+        if self.db:
+            self.users = self.db.users
+            self.scores = self.db.scores
+            self.chat_histories = self.db.chat_histories
+            init_collections(self.db)
+        else:
+            maybe_print(
+                "❌ Unable to connect to db, using local storage (dict), some features such as login check may not work"
+            )
+            self.db = {}
+            self.users = TableMock()
+            self.scores = TableMock()
+            self.chat_histories = TableMock()
+
+    def add_user(self, login: str, password: str):
+        try:
+            self.users.insert_one(
+                {
+                    "login": login,
+                    "password": password,
+                }
+            )
+
+            self.scores.insert_one({"login": login, "points": 0})
+
+            maybe_print(f"✅ {login} successfully added")
+            return True
+
+        except Exception as e:
+            maybe_print(f"❌ Error during processing {login}: {e}")
+            return False
+
+    def update_score(self, login: str, points: int):
+        result = self.scores.update_one(
+            {"login": login},
+            {"$set": {"points": points}},
+            upsert=True,
+        )
+        return result.modified_count > 0 or result.upserted_id is not None
+
+    def add_score(self, login: str, points: int):
+        current = self.get_score(login)
+        return self.update_score(login, current + points)
+
+    def get_score(self, login: str):
+        doc = self.scores.find_one({"login": login})
+        return doc["points"] if doc else 0
+
+    def get_all_scores(self, offset: int = 0, limit: int = 10):
+        return list(
+            self.scores.find({}, {"_id": 0})
+            .sort("points", -1)
+            .skip(offset)
+            .limit(limit)
+        )
+
+    # returns id
+    def add_history(self, login: str, data):
+        result = self.chat_histories.insert_one(
+            {
+                "login": login,
+                "data": data,
+                "updated_at": datetime.now(),
+            }
+        )
+
+        return result.inserted_id if result else None
+
+    def update_history(self, history_id, new_data):
+        return self.chat_histories.update_one(
+            {"_id": history_id},
+            {"$set": {"data": new_data, "updated_at": datetime.now()}},
+        )
+
+    def get_user_chat_history(self, history_id):
+        doc = self.chat_histories.find_one({"_id": history_id})
+        return doc["data"] if doc else None
+
+    def get_user_chat_histories(self, login: str, limit: int = 10):
+        return [
+            doc["data"]
+            for doc in self.chat_histories.find(
+                {"login": login}, {"_id": 0, "updated_at": 0, "login": 0}
+            )
+            .sort("updated_at", -1)
+            .limit(limit)
+        ]
+
+    def authenticate_user(self, login: str, password: str):
+        user = self.users.find_one({"login": login, "password": password})
+        return user is not None
+
+    def get_all_users(self):
+        return list(doc["login"] for doc in self.users.find({}, {"password": 0}))
+
+    def delete_user(self, login: str):
+        self.users.delete_one({"login": login})
+        self.scores.delete_one({"login": login})
+        self.chat_histories.delete_many({"login": login})
+        maybe_print(f"✅ User {login} successfully deleted")
+
+    def clear_all(self):
+        self.users.delete_many({})
+        self.scores.delete_many({})
+        self.chat_histories.delete_many({})
