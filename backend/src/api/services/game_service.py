@@ -1,46 +1,28 @@
-from api.models.session import GameSession, Message, HallucinationReport
+from api.models.session import GameSession, Message, HallucinationReport, SessionStatus
 from datetime import datetime
+from mongodb.db_helper import db
 import uuid
 
-async def start_new_session(user_id: str, level_id: str) -> GameSession:
-    # TODO: Реализовать через БД
-    # session_data = await create_session(user_id, level_id) 
-    session_data = {
-        "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "level_id": level_id,
-        "status": "active",
-        "created_at": datetime.now(),
-        "completed_at": None,
-        "messages": []
-    }
-    return session_data
+
+async def start_new_session(username: str, level_id: str) -> GameSession:
+    id = db.start_history(username, level_id)
+    return GameSession(id=id, level_id=level_id, username=username)
 
 
-async def get_user_session(session_id: str, user_id: str) -> GameSession:
-    # TODO: Реализовать через БД
-    # session = await get_session(session_id)
-    session = {
-        "id": session_id,
-        "user_id": user_id,
-        "level_id": "1",
-        "status": "active",
-        "created_at": datetime.now(),
-        "completed_at": None,
-        "messages": []
-    }
-    
-    if session and session.user_id == user_id:
-        return session
-    
-    return None
+async def get_user_session(session_id: str) -> GameSession:
+    data = db.get_user_chat_history(session_id)
+    return GameSession(
+        id=session_id,
+        level_id=data["level_id"],
+        username=data["username"],
+        messages=[
+            Message(role=doc["type"], content=doc["text"]) for doc in data["data"]
+        ],
+    )
 
 
 async def add_message_to_session(session_id: str, role: str, content: str) -> Message:
-    # TODO: Реализовать через БД
-    # message_id = await save_message(session_id, role, content)
-    message_id = str(uuid.uuid4())
-    return Message(id=message_id, role=role, content=content, timestamp=None)  # timestamp добавит БД
+    return db.update_history(session_id, content, role)
 
 
 async def get_llm_response(session_id: str, user_message: str) -> str:
@@ -55,5 +37,5 @@ async def validate_hallucination_report(report: HallucinationReport) -> dict:
     return {
         "is_valid": True,
         "confidence": 0.85,
-        "explanation": "Факт успешно проверен по предоставленному источнику"
+        "explanation": "Факт успешно проверен по предоставленному источнику",
     }

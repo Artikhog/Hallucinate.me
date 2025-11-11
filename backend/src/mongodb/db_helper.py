@@ -93,6 +93,9 @@ def init_collections(db):
         chat_histories = db.create_collection("chat_histories")
         chat_histories.create_index([("login", 1), ("updated_at", -1)])
 
+    if "levels" not in db.list_collection_names():
+        db.create_collection("levels")
+
 
 class DatabaseHelper:
     def __init__(self, db_name=None):
@@ -101,6 +104,7 @@ class DatabaseHelper:
             self.users = self.db.users
             self.scores = self.db.scores
             self.chat_histories = self.db.chat_histories
+            self.levels = self.db.levels
             init_collections(self.db)
         else:
             maybe_print(
@@ -110,6 +114,7 @@ class DatabaseHelper:
             self.users = TableMock()
             self.scores = TableMock()
             self.chat_histories = TableMock()
+            self.levels = TableMock()
 
     def add_user(self, login: str, password: str):
         try:
@@ -137,7 +142,10 @@ class DatabaseHelper:
         )
         return result.modified_count > 0 or result.upserted_id is not None
 
-    def add_score(self, login: str, points: int):
+    def add_score(self, login: str, session_id):
+        history = self.get_user_chat_history(session_id)
+        level = self.get_level(history["level_id"])
+        points = level["base_score"]
         current = self.get_score(login)
         return self.update_score(login, current + points)
 
@@ -145,44 +153,62 @@ class DatabaseHelper:
         doc = self.scores.find_one({"login": login})
         return doc["points"] if doc else 0
 
-    def get_all_scores(self, offset: int = 0, limit: int = 10):
+    def get_all_scores(self):
         return list(
             self.scores.find({}, {"_id": 0})
             .sort("points", -1)
-            .skip(offset)
-            .limit(limit)
         )
 
     # returns id
-    def add_history(self, login: str, data):
+    def start_history(self, login: str, level_id):
         result = self.chat_histories.insert_one(
             {
                 "login": login,
-                "data": data,
+                "data": [],
+                "level_id": level_id,
+                "is_valid": False,
                 "updated_at": datetime.now(),
             }
         )
 
         return result.inserted_id if result else None
 
-    def update_history(self, history_id, new_data):
+    def update_history(self, history_id, new_data_text, type):
         return self.chat_histories.update_one(
             {"_id": history_id},
-            {"$set": {"data": new_data, "updated_at": datetime.now()}},
+            {
+                "$push": {"data": {"text": new_data_text, "type": type}},
+                "$set": {"updated_at": datetime.now()},
+            },
+        )
+
+    def save_user_report(self, history_id, report):
+        return self.chat_histories.update_one(
+            {"_id": history_id},
+            {"$set": {"updated_at": datetime.now(), "report": report}},
+        )
+
+    def save_assistant_verdict(self, history_id, verdict, is_valid):
+        return self.chat_histories.update_one(
+            {"_id": history_id},
+            {
+                "$set": {
+                    "updated_at": datetime.now(),
+                    "verdict": verdict,
+                    "is_valid": is_valid,
+                }
+            },
         )
 
     def get_user_chat_history(self, history_id):
-        doc = self.chat_histories.find_one({"_id": history_id})
-        return doc["data"] if doc else None
+        return self.chat_histories.find_one({"_id": history_id})
 
-    def get_user_chat_histories(self, login: str, limit: int = 10):
+    def get_user_chat_histories(self, login: str):
         return [
             doc["data"]
             for doc in self.chat_histories.find(
                 {"login": login}, {"_id": 0, "updated_at": 0, "login": 0}
-            )
-            .sort("updated_at", -1)
-            .limit(limit)
+            ).sort("updated_at", -1)
         ]
 
     def authenticate_user(self, login: str, password: str):
@@ -198,7 +224,16 @@ class DatabaseHelper:
         self.chat_histories.delete_many({"login": login})
         maybe_print(f"✅ User {login} successfully deleted")
 
+    def crete_level(self, data):
+        return self.levels.insert_one(data).inserted_id
+
+    def get_level(self, level_id):
+        return self.levels.find_one({"_id": level_id})
+
     def clear_all(self):
         self.users.delete_many({})
         self.scores.delete_many({})
         self.chat_histories.delete_many({})
+
+
+db = DatabaseHelper()
