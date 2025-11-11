@@ -1,27 +1,19 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/shared/ui/shadcn/ui/sidebar"
-import { AppSidebar } from "@/widgets/appSidebar/AppSidebar"
+import { AppSidebar } from "@/shared/ui/shadcn/app-sidebar"
 import { Outlet } from "react-router-dom"
 
 export default function Layout() {
     return (
-        <SidebarProvider
-            style={
-                {
-                    '--sidebar-width': '240px', // Ширина в развернутом состоянии (240px)
-                    '--sidebar-width-icon': '3rem' // Ширина в свернутом состоянии (48px)
-                } as React.CSSProperties
-            }>
-            <div className="min-h-screen flex bg-background">
-                <AppSidebar />
-                <SidebarInset className="flex-1 min-w-0 ml-60">
-                    <main className="w-full">
-                        <div className="p-6">
-                            <SidebarTrigger />
-                            <Outlet />
-                        </div>
-                    </main>
-                </SidebarInset>
-            </div>
+        <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                    <SidebarTrigger className="-ml-1" />
+                </header>
+                <div className="flex flex-1 flex-col gap-4 p-4">
+                    <Outlet />
+                </div>
+            </SidebarInset>
         </SidebarProvider>
     )
 }
