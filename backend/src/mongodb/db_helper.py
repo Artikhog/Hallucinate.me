@@ -24,6 +24,13 @@ def maybe_print(s):
         print(s)
 
 
+def fix_id(doc):
+    if "_id" in doc:
+        doc["id"] = doc["_id"]
+        del doc["_id"]
+    return doc
+
+
 def download_yandex_ca_certificate():
     import urllib.request
 
@@ -226,6 +233,9 @@ class DatabaseHelper:
 
     def get_level(self, level_id):
         return self.levels.find_one({"_id": level_id})
+
+    def get_all_levels(self):
+        return [fix_id(doc) for doc in self.levels.find({})]
 
     def clear_all(self):
         self.users.delete_many({})

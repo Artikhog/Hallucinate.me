@@ -72,3 +72,8 @@ if __name__ == "__main__":
         {"login": "login1", "points": 100 + 300},
         {"login": "login2", "points": 0},
     ]
+
+    assert db.get_all_levels() == [
+        {"id": level_id, "base_score": 100},
+        {"id": level_id_2, "base_score": 300},
+    ]
