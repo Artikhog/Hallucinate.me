@@ -8,21 +8,25 @@ router = APIRouter()
 
 @router.post("/register", response_model=TokenResponse)
 async def register(user_data: UserRegister):
-    # TODO: Проверить, что пользователь не существует
-    user_id = await register_user(user_data)
+    success = await register_user(user_data)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken",
+        )
     
-    access_token = create_access_token(data={"sub": user_id})
-    return TokenResponse(access_token=access_token, user_id=user_id)
+    access_token = create_access_token(data={"sub": user_data.username})
+    return TokenResponse(access_token=access_token, username=user_data.username)
 
 @router.post("/login", response_model=TokenResponse)
 async def login(user_data: UserLogin):
-    user = await authenticate_user(user_data.username, user_data.password)
+    success = await authenticate_user(user_data.username, user_data.password)
     
-    if not user:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
     
-    access_token = create_access_token(data={"sub": user.id})
-    return TokenResponse(access_token=access_token, user_id=user.id)
+    access_token = create_access_token(data={"sub": user_data.username})
+    return TokenResponse(access_token=access_token, username=user_data.username)

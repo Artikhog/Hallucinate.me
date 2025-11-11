@@ -1,4 +1,5 @@
-from api.models.user import UserRegister
+from api.models.user import UserRegister, User
+from mongodb.db_helper import db
 import hashlib
 import secrets
 import uuid
@@ -6,10 +7,7 @@ import uuid
 
 def get_hash(salt: str, password: str) -> str:
     return hashlib.pbkdf2_hmac(
-        'sha256', 
-        password.encode('utf-8'), 
-        salt.encode('utf-8'), 
-        1000
+        "sha256", password.encode("utf-8"), salt.encode("utf-8"), 1000
     )
 
 
@@ -21,7 +19,7 @@ def get_password_hash(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
-        salt, stored_hash = hashed_password.split(':')
+        salt, stored_hash = hashed_password.split(":")
         new_hash = get_hash(salt, plain_password).hex()
         return secrets.compare_digest(new_hash, stored_hash)
     except (ValueError, AttributeError):
@@ -29,26 +27,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 async def authenticate_user(username: str, password: str):
-    # TODO: Реализовать через БД
-    user = "user" # await get_user_by_username(username)
-    
-    if not user:
-        return False
-    if not verify_password(password, user.hashed_password):
-        return False
-    
-    return user
+    return db.authenticate_user(username, get_password_hash(password))
 
 
 async def register_user(user_data: UserRegister):
     hashed_password = get_password_hash(user_data.password)
-    
-    # TODO: Реализовать через БД
-    user_id = str(uuid.uuid4()) # await create_user(user_data.username, hashed_password)
-    return user_id
+    return db.add_user(user_data.username, hashed_password)
 
 
-async def get_user_by_id(user_id: str):
-    # TODO: Реализовать через БД
-    # Должна возвращать UserInDB или None
-    return "user"
+async def get_user_by_login(login: str):
+    score = db.get_score(login)
+    if not score:
+        return None
+    return User(username=login, score=score)
