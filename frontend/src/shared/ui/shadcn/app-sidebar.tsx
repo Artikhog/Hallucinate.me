@@ -24,6 +24,9 @@ import {
   SidebarUser
 } from "@/shared/ui/shadcn/ui/sidebar"
 import {useAuth} from "@/features/auth/model/auth-context.ts";
+import {sessionsApi} from "@/features/session/sessions-api.ts";
+import {useEffect, useState} from "react";
+import type {UserSession} from "@/features/session/types/user-session.ts";
 
 // Main navigation items
 const navItems = [
@@ -44,24 +47,63 @@ const navItems = [
   },
 ]
 
-// Recent chats (mock data - replace with actual data)
-const recentChats = [
-  {
-    id: "1",
-    title: "Обсуждение истории",
-    url: "/chat/1",
-  },
-  {
-    id: "2",
-    title: "Вопросы о науке",
-    url: "/chat/2",
-  },
-  {
-    id: "3",
-    title: "Факты о природе",
-    url: "/chat/3",
-  },
-]
+export function RecentChatsSidebar() {
+  const location = useLocation()
+  const [sessions, setSessions] = useState<UserSession[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setIsLoading(true)
+      try {
+        const data = await sessionsApi.getUserSessions()
+        setSessions(data)
+      } catch (error) {
+        console.error("Failed to fetch sessions:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSessions()
+  }, [])
+
+  return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild>
+            <Link to="/chat">
+              <Plus />
+              <span>Новый чат</span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+
+        {isLoading && (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <span>Загрузка...</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+        )}
+
+        {sessions.map((chat) => {
+          const isActive = location.pathname === `/chat/${chat.id}`
+
+          return (
+              <SidebarMenuItem key={chat.id}>
+                <SidebarMenuButton asChild isActive={isActive}>
+                  <Link to={`/chat/${chat.id}`}>
+                    <MessageSquare className="opacity-60" />
+                    <span>{chat.username || "Untitled Chat"}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+          )
+        })}
+      </SidebarMenu>
+  )
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
@@ -118,29 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupLabel>Недавние чаты</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link to="/chat">
-                    <Plus />
-                    <span>Новый чат</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {recentChats.map((chat) => {
-                const isActive = location.pathname === chat.url
-                return (
-                  <SidebarMenuItem key={chat.id}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={chat.url}>
-                        <MessageSquare className="opacity-60" />
-                        <span>{chat.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
+            <RecentChatsSidebar />
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroupBottom>
