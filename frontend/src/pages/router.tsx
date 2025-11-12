@@ -1,11 +1,12 @@
-import { createBrowserRouter } from 'react-router-dom';
-import { NotFoundPage } from './notFound/NotFoundPage';
-import { LoginPage } from './login/LoginPage';
-import { LevelsPage } from './levels/LevelsPage';
-import { ChatPage } from './chat/ChatPage';
-import { HomePage } from './home/HomePage';
-import { LeaderBoardPage } from './leaderBoard/LeaderBoardPage';
+import {createBrowserRouter} from 'react-router-dom';
+import {NotFoundPage} from './notFound/NotFoundPage';
+import {LoginPage} from './login/LoginPage';
+import {LevelsPage} from './levels/LevelsPage';
+import {ChatPage} from './chat/ChatPage';
+import {HomePage} from './home/HomePage';
+import {LeaderBoardPage} from './leaderBoard/LeaderBoardPage';
 import Layout from '@/app/layouts/layout';
+import {RegisterPage} from "@/pages/login/RegisterPage.tsx";
 
 export const router = createBrowserRouter([
     {
@@ -26,11 +27,14 @@ export const router = createBrowserRouter([
     },
     {
         path: '/auth',
-        element: <Layout />,
         children: [
             {
                 path: 'login',
                 element: <LoginPage />,
+            },
+            {
+                path: 'register',
+                element: <RegisterPage />,
             },
         ],
     },
