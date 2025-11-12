@@ -2,15 +2,15 @@ import { makeAutoObservable, runInAction } from 'mobx';
 import { authApi, type LoginCredentials, type RegisterData, type AuthResponse } from '../api/auth-api';
 import { tokenService } from '@/shared/api/base';
 
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role?: string; // опционально, для ролевой системы
+export interface UserStats {
+  total_score: number;
+  sessions_played: number;
+  successful_reports: number;
+  global_rank: number;
 }
 
 export class AuthStore {
-  user: User | null = null;
+  userStats: UserStats | null = null;
   isAuthenticated: boolean = false;
   isLoading: boolean = true;
   error: string | null = null;
@@ -20,8 +20,8 @@ export class AuthStore {
   }
 
   // Actions
-  setUser = (user: User | null) => {
-    this.user = user;
+  setUserStats = (user: UserStats | null) => {
+    this.userStats = user;
     this.isAuthenticated = !!user;
   };
 
@@ -40,10 +40,11 @@ export class AuthStore {
       this.setError(null);
 
       const data: AuthResponse = await authApi.login(credentials);
-      tokenService.setTokens(data.tokens);
+      tokenService.setTokens(data.access_token);
+      const stats = await authApi.getStats();
 
       runInAction(() => {
-        this.user = data.user;
+        this.userStats = stats;
         this.isAuthenticated = true;
         this.isLoading = false;
       });
@@ -62,10 +63,11 @@ export class AuthStore {
       this.setError(null);
 
       const response: AuthResponse = await authApi.register(data);
-      tokenService.setTokens(response.tokens);
+      tokenService.setTokens(response.access_token);
+      const stats = await authApi.getStats();
 
       runInAction(() => {
-        this.user = response.user;
+        this.userStats = stats;
         this.isAuthenticated = true;
         this.isLoading = false;
       });
@@ -79,12 +81,10 @@ export class AuthStore {
   };
 
   logout = (): void => {
-    // Не ждем ответ от сервера, сразу разлогиниваем
-    authApi.logout().catch(console.error);
     tokenService.clearTokens();
 
     runInAction(() => {
-      this.user = null;
+      this.userStats = null;
       this.isAuthenticated = false;
       this.error = null;
     });
@@ -93,8 +93,8 @@ export class AuthStore {
   checkAuth = async (): Promise<void> => {
     try {
       this.setLoading(true);
-      
-      const token = tokenService.getAccessToken();
+      const token = `Bearer ${tokenService.getAccessToken()}`;
+
       if (!token) {
         runInAction(() => {
           this.isLoading = false;
@@ -102,10 +102,10 @@ export class AuthStore {
         return;
       }
 
-      const user = await authApi.getProfile();
+      const user = await authApi.getStats();
       
       runInAction(() => {
-        this.user = user;
+        this.userStats = user;
         this.isAuthenticated = true;
         this.isLoading = false;
       });
@@ -114,7 +114,7 @@ export class AuthStore {
       tokenService.clearTokens();
       
       runInAction(() => {
-        this.user = null;
+        this.userStats = null;
         this.isAuthenticated = false;
         this.isLoading = false;
         this.error = error instanceof Error ? error.message : 'Auth check failed';
@@ -122,23 +122,10 @@ export class AuthStore {
     }
   };
 
-  // Computed values (геттеры)
-  get isAdmin(): boolean {
-    return this.user?.role === 'admin';
-  }
-
-  get userName(): string {
-    return this.user?.name || 'User';
-  }
-
-  get userEmail(): string {
-    return this.user?.email || '';
-  }
-
   // Reset store
   reset = (): void => {
     runInAction(() => {
-      this.user = null;
+      this.userStats = null;
       this.isAuthenticated = false;
       this.isLoading = false;
       this.error = null;

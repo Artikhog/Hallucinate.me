@@ -20,8 +20,7 @@ export const ProtectedRoute = observer(({
   const { 
     isAuthenticated, 
     isLoading, 
-    user, 
-    checkAuth 
+    checkAuth
   } = useAuth();
 
   useEffect(() => {
@@ -39,10 +38,10 @@ export const ProtectedRoute = observer(({
 
   // Проверка ролей
   useEffect(() => {
-    if (!isLoading && isAuthenticated && requiredRole && user?.role !== requiredRole) {
+    if (!isLoading && isAuthenticated && requiredRole) {
       navigate('/unauthorized', { replace: true });
     }
-  }, [isAuthenticated, isLoading, user, requiredRole, navigate]);
+  }, [isAuthenticated, isLoading, requiredRole, navigate]);
 
   if (isLoading) {
     return <>{fallback}</>;
@@ -52,7 +51,7 @@ export const ProtectedRoute = observer(({
     return null;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
+  if (requiredRole) {
     return null;
   }
 

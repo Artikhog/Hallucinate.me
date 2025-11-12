@@ -19,15 +19,10 @@ export function useAuth() {
 
     return useObserver(() => ({
         // State
-        user: store.user,
+        useStats: store.userStats,
         isAuthenticated: store.isAuthenticated,
         isLoading: store.isLoading,
         error: store.error,
-
-        // Computed
-        isAdmin: store.isAdmin,
-        userName: store.userName,
-        userEmail: store.userEmail,
 
         // Actions
         login: store.login,

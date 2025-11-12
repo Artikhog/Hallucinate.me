@@ -1,52 +1,35 @@
-import { apiClient, type Tokens } from '@/shared/api/base';
+import {apiClient} from '@/shared/api/base';
+import type {UserStats} from "@/features/auth/model/auth-store.ts";
 
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface RegisterData {
-  email: string;
+  username: string;
   password: string;
-  name: string;
 }
 
 export interface AuthResponse {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
-  tokens: Tokens;
+  access_token: string,
+  token_type: string,
+  user_id: string
 }
 
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    // TODO заменить на метод apiClient
     const response = await apiClient.instance.post<AuthResponse>('/auth/login', credentials);
-    return response.data;
+    return response.data as AuthResponse;
   },
 
   register: async (data: RegisterData): Promise<AuthResponse> => {
-    // TODO заменить на метод apiClient
     const response = await apiClient.instance.post<AuthResponse>('/auth/register', data);
-    return response.data;
+    return response.data as AuthResponse;
   },
 
-  logout: async (): Promise<void> => {
-    // TODO заменить на метод apiClient
-    await apiClient.instance.post('/auth/logout');
-  },
-
-  refreshTokens: async (refreshToken: string): Promise<Tokens> => {
-    // TODO заменить на метод apiClient
-    const response = await apiClient.instance.post<Tokens>('/auth/refresh', { refreshToken });
-    return response.data;
-  },
-
-  getProfile: async () => {
-    // TODO заменить на метод apiClient
-    const response = await apiClient.instance.get('/auth/profile');
+  getStats: async (): Promise<UserStats> => {
+    const response = await apiClient.instance.get('/users/me/stats');
     return response.data;
   },
 };

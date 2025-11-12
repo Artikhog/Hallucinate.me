@@ -108,8 +108,8 @@ function CustomChatMessages() {
               </ChatMessage.Avatar>
             )}
             
-            <div className={`flex min-w-0 flex-1 flex-col gap-2 ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-              {message.role === 'user' && (
+            <div className={`flex min-w-0 flex-1 flex-col gap-2 items-end `}>
+              {(
                 <div className="rounded-2xl px-4 py-2.5">
                   <ChatMessage.Content className="text-sm">
                     <ChatMessage.Part.Markdown />
@@ -151,13 +151,13 @@ function CustomChatMessages() {
               )}
             </div>
             
-            {message.role === 'user' && (
-              <ChatMessage.Avatar className="shrink-0 self-start">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                  U
-                </div>
-              </ChatMessage.Avatar>
-            )}
+
+            <ChatMessage.Avatar className="shrink-0 self-start">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+                U
+              </div>
+            </ChatMessage.Avatar>
+
           </ChatMessage>
         </div>
       ))}
