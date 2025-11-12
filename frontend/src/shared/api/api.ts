@@ -10,13 +10,6 @@
  * ---------------------------------------------------------------
  */
 
-/** SessionStatus */
-export enum SessionStatus {
-  Active = "active",
-  Completed = "completed",
-  Abandoned = "abandoned",
-}
-
 /** MessageRole */
 export enum MessageRole {
   User = "user",
@@ -29,16 +22,8 @@ export interface GameSession {
   id: string;
   /** Level Id */
   level_id: string;
-  /** User Id */
-  user_id: string;
-  status: SessionStatus;
-  /**
-   * Created At
-   * @format date-time
-   */
-  created_at: string;
-  /** Completed At */
-  completed_at: string | null;
+  /** Username */
+  username: string;
   /**
    * Messages
    * @default []
@@ -54,8 +39,6 @@ export interface HTTPValidationError {
 
 /** HallucinationReport */
 export interface HallucinationReport {
-  /** Message Id */
-  message_id: string;
   /** Incorrect Fact */
   incorrect_fact: string;
   /** Source Url */
@@ -64,14 +47,10 @@ export interface HallucinationReport {
 
 /** LeaderboardEntry */
 export interface LeaderboardEntry {
-  /** User Id */
-  user_id: string;
   /** Username */
   username: string;
   /** Score */
   score: number;
-  /** Rank */
-  rank: number;
 }
 
 /** Level */
@@ -84,20 +63,17 @@ export interface Level {
   description: string;
   /** Base Score */
   base_score: number;
+  /** Article Link */
+  article_link: string;
+  /** Article Name */
+  article_name: string;
 }
 
 /** Message */
 export interface Message {
-  /** Id */
-  id: string;
   role: MessageRole;
   /** Content */
   content: string;
-  /**
-   * Timestamp
-   * @format date-time
-   */
-  timestamp: string;
 }
 
 /** TokenResponse */
@@ -109,8 +85,8 @@ export interface TokenResponse {
    * @default "bearer"
    */
   token_type?: string;
-  /** User Id */
-  user_id: string;
+  /** Username */
+  username: string;
 }
 
 /** UserLogin */
@@ -545,6 +521,34 @@ export class Api<
         format: "json",
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Game Sessions
+     * @name SendUserMessageStreamSessionsSessionIdMessageStreamPost
+     * @summary Send User Message Stream
+     * @request POST:/sessions/{session_id}/message/stream
+     * @secure
+     * @response `200` `any` Successful Response
+     * @response `422` `HTTPValidationError` Validation Error
+     */
+    sendUserMessageStreamSessionsSessionIdMessageStreamPost: (
+      sessionId: string,
+      query: {
+        /** Message */
+        message: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<any, HTTPValidationError>({
+        path: `/sessions/${sessionId}/message/stream`,
+        method: "POST",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
   };
   leaderboard = {
     /**
@@ -560,29 +564,6 @@ export class Api<
     getGlobalLeaderboardLeaderboardGet: (params: RequestParams = {}) =>
       this.request<LeaderboardEntry[], any>({
         path: `/leaderboard/`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Leaderboard
-     * @name GetLevelLeaderboardLeaderboardLevelsLevelIdGet
-     * @summary Get Level Leaderboard
-     * @request GET:/leaderboard/levels/{level_id}
-     * @secure
-     * @response `200` `(LeaderboardEntry)[]` Successful Response
-     * @response `422` `HTTPValidationError` Validation Error
-     */
-    getLevelLeaderboardLeaderboardLevelsLevelIdGet: (
-      levelId: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<LeaderboardEntry[], HTTPValidationError>({
-        path: `/leaderboard/levels/${levelId}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -613,13 +594,13 @@ export class Api<
      * No description
      *
      * @tags Users
-     * @name GetUserStatsUsersMeSessionsGet
-     * @summary Get User Stats
+     * @name GetUserSessionsUsersMeSessionsGet
+     * @summary Get User Sessions
      * @request GET:/users/me/sessions
      * @secure
      * @response `200` `(GameSession)[]` Successful Response
      */
-    getUserStatsUsersMeSessionsGet: (params: RequestParams = {}) =>
+    getUserSessionsUsersMeSessionsGet: (params: RequestParams = {}) =>
       this.request<GameSession[], any>({
         path: `/users/me/sessions`,
         method: "GET",

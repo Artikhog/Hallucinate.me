@@ -12,4 +12,4 @@ LEVELS = [
 
 if __name__ == "__main__":
     for level in LEVELS:
-        db.crete_level(level)
+        db.create_level(level)

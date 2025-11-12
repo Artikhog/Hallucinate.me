@@ -12,26 +12,34 @@ import {
 import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
-import { useState, useCallback } from "react";
-import { API_BASE_URL } from "@/shared/api/base";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
-
-const initialMessages: Message[] = [
-  {
-    id: "1",
-    role: "assistant",
-    parts: [
-      {
-        type: "text",
-        text: "Привет! Чем могу помочь?",
-      },
-    ],
-  },
-];
+// import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
+import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
+import { useSearchParams } from "react-router-dom";
+import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
 
 export function ChatSection() {
-  const handler = useChat();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("id") || "";
+
+  console.log("sessionId", sessionId);
+
+  // const { data: session } = useGetSessionInfoQuery(sessionId || "");
+
+  const { data: messages = [] } = useGetSessionMessagesQuery(sessionId || "");
+
+  const initialMessages = useMemo(() => messages?.map((message) => ({
+    id: `msg-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`,
+    role: message.role,
+    parts: [{ type: "text", text: message.content }],
+  })), [messages]);
+
+  const handler = useChat(initialMessages, sessionId || "");
 
   return (
     <ChatSectionUI
@@ -76,6 +84,8 @@ export function ChatSection() {
 }
 
 function CustomChatMessages() {
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("id") || "";
   const { messages } = useChatUI();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -100,6 +110,18 @@ function CustomChatMessages() {
     setSelectedMessage(message);
     setReportModalOpen(true);
   };
+  const { mutate: reportHallucination } = useReportHallucinationMutation({
+    onSuccess: () => {
+      setReportModalOpen(false);
+    },
+  });
+
+  const handleReportHallucinationSubmit = (_: Message, reason: string, sourceUrl: string) => {
+    reportHallucination({ sessionId: sessionId || "", report: { incorrect_fact: reason, source_url: sourceUrl } });
+    setReportModalOpen(false);
+  };
+
+
   return (
     <>
       {selectedMessage && reportModalOpen && (
@@ -107,7 +129,7 @@ function CustomChatMessages() {
           open={reportModalOpen}
           onOpenChange={setReportModalOpen}
           message={selectedMessage}
-          onSubmit={handleReportHallucination}
+          onSubmit={handleReportHallucinationSubmit}
         />
       )}
       {messages.map((message, index) => (
@@ -129,9 +151,9 @@ function CustomChatMessages() {
             )}
             
             <div className={`flex min-w-0 flex-1 flex-col gap-2 items-end `}>
-              {(
-                <div className="rounded-2xl px-4 py-2.5">
-                  <ChatMessage.Content className="text-sm">
+              {message.role !== "assistant" && (
+                <div className="rounded-xl px-4 py-2.5 w-full">
+                  <ChatMessage.Content className="text-sm w-full">
                     <ChatMessage.Part.Markdown />
                   </ChatMessage.Content>
                 </div>
@@ -139,7 +161,7 @@ function CustomChatMessages() {
 
               {message.role === "assistant" && (
                 <>
-                  <ChatMessage.Content className="prose prose-sm max-w-none text-sm dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 rounded-2xl">
+                  <ChatMessage.Content className="ml-2 self-start prose prose-sm max-w-none text-sm dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 rounded-2xl">
                     <ChatMessage.Part.File />
                     <ChatMessage.Part.Event />
                     <ChatMessage.Part.Markdown />
@@ -148,7 +170,7 @@ function CustomChatMessages() {
                     <ChatMessage.Part.Suggestion />
                   </ChatMessage.Content>
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex ml-2 self-start items-center gap-2 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
                       title="Сообщить о галлюцинации"
@@ -179,12 +201,6 @@ function CustomChatMessages() {
               )}
             </div>
             
-
-            <ChatMessage.Avatar className="shrink-0 self-start">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                U
-              </div>
-            </ChatMessage.Avatar>
 
           </ChatMessage>
         </div>
@@ -218,30 +234,20 @@ function TypingIndicator() {
   );
 }
 
-interface BackendChatMessage {
-  role: string;
-  content: string;
-}
-
-function useChat(): ChatHandler {
+function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [status, setStatus] = useState<
     "streaming" | "ready" | "error" | "submitted"
   >("ready");
 
-  // Convert frontend Message format to backend ChatMessage format
-  const convertToBackendMessage = (message: Message): BackendChatMessage => {
-    // Extract text content from message parts
-    const textContent = message.parts
-      .filter((part) => part.type === "text")
-      .map((part) => (part as { text: string }).text)
-      .join("");
+  console.log("messages", messages, initialMessages, sessionId);
 
-    return {
-      role: message.role,
-      content: textContent,
-    };
-  };
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
 
   const sendMessage = useCallback(
     async (message: Message) => {
@@ -250,12 +256,6 @@ function useChat(): ChatHandler {
       try {
         // Add user message to state
         setMessages((prev) => [...prev, message]);
-
-        // Convert message history to backend format (excluding the initial welcome message)
-        const historyMessages = messages.filter((msg) => msg.id !== "1");
-        const history: BackendChatMessage[] = historyMessages.map(
-          convertToBackendMessage
-        );
 
         // Extract text content from the new message
         const messageText = message.parts
@@ -276,47 +276,31 @@ function useChat(): ChatHandler {
         setMessages((prev) => [...prev, assistantMessage]);
         setStatus("streaming");
 
-        // Prepare request body
-        const requestBody = {
-          history,
-          message: messageText,
-          temperature: 0.7,
-        };
-
         // Make SSE request to backend
         // API_BASE_URL already includes '/api', so we use '/chat/stream'
-        const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+        const response = await fetch(`http://localhost:8000/sessions/${sessionId}/message/stream?message=${messageText}`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Authorization": `Bearer ${tokenService.getAccessToken()}`,
           },
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        if (!response.body) {
-          throw new Error("Response body is not readable");
-        }
+        })
 
         // Используем ReadableStream для чтения потока
-        const reader = response.body.getReader();
+        const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let streamedContent = "";
         let buffer = "";
 
         try {
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await reader?.read() || { done: false, value: null };
 
             if (done) {
               break;
             }
 
             // Декодируем chunk и добавляем в буфер
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value || new Uint8Array(), { stream: true });
 
             // Обрабатываем все полные SSE сообщения из буфера
             const lines = buffer.split("\n");
@@ -396,7 +380,7 @@ function useChat(): ChatHandler {
 
           setStatus("ready");
         } finally {
-          reader.releaseLock();
+          reader?.releaseLock?.();
         }
       } catch (error) {
         console.error("Error sending message:", error);

@@ -1,5 +1,5 @@
 import {Button} from "@/shared/ui/shadcn/ui/button"
-import {Card, CardContent, CardFooter, CardHeader, CardTitle,} from "@/shared/ui/shadcn/ui/card"
+import {Card, CardContent, CardHeader, CardTitle,} from "@/shared/ui/shadcn/ui/card"
 import {Input} from "@/shared/ui/shadcn/ui/input"
 import {Label} from "@/shared/ui/shadcn/ui/label"
 import type {LoginCredentials} from "@/features/auth/api/auth-api.ts";
@@ -9,14 +9,19 @@ import {useRef} from "react";
 export function Login() {
 
     const authStore = useAuthStore();
-    const passwordRef = useRef();
-    const usernameRef = useRef();
+    const passwordRef = useRef<HTMLInputElement>(null);
+    const usernameRef = useRef<HTMLInputElement>(null);
 
     async function handle(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
-        const username = usernameRef.current.value;
-        const password = passwordRef.current.value;
+        const username = usernameRef.current?.value;
+        const password = passwordRef.current?.value;
+
+        if (!username || !password) {
+            alert('Please fill in all fields')
+            return;
+        }
 
         try {
             await authStore.login({username, password} as LoginCredentials)
