@@ -13,12 +13,12 @@ import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { API_BASE_URL, apiClient, tokenService } from "@/shared/api/base";
+import { tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
-import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
+// import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
 import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
 
 export function ChatSection() {
@@ -27,7 +27,7 @@ export function ChatSection() {
 
   console.log("sessionId", sessionId);
 
-  const { data: session } = useGetSessionInfoQuery(sessionId || "");
+  // const { data: session } = useGetSessionInfoQuery(sessionId || "");
 
   const { data: messages = [] } = useGetSessionMessagesQuery(sessionId || "");
 
@@ -116,7 +116,7 @@ function CustomChatMessages() {
     },
   });
 
-  const handleReportHallucinationSubmit = (message: Message, reason: string, sourceUrl: string) => {
+  const handleReportHallucinationSubmit = (_: Message, reason: string, sourceUrl: string) => {
     reportHallucination({ sessionId: sessionId || "", report: { incorrect_fact: reason, source_url: sourceUrl } });
     setReportModalOpen(false);
   };
@@ -151,9 +151,9 @@ function CustomChatMessages() {
             )}
             
             <div className={`flex min-w-0 flex-1 flex-col gap-2 items-end `}>
-              {(
-                <div className="rounded-2xl px-4 py-2.5">
-                  <ChatMessage.Content className="text-sm">
+              {message.role !== "assistant" && (
+                <div className="rounded-xl px-4 py-2.5 w-full">
+                  <ChatMessage.Content className="text-sm w-full">
                     <ChatMessage.Part.Markdown />
                   </ChatMessage.Content>
                 </div>
@@ -161,7 +161,7 @@ function CustomChatMessages() {
 
               {message.role === "assistant" && (
                 <>
-                  <ChatMessage.Content className="prose prose-sm max-w-none text-sm dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 rounded-2xl">
+                  <ChatMessage.Content className="ml-2 self-start prose prose-sm max-w-none text-sm dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 rounded-2xl">
                     <ChatMessage.Part.File />
                     <ChatMessage.Part.Event />
                     <ChatMessage.Part.Markdown />
@@ -170,7 +170,7 @@ function CustomChatMessages() {
                     <ChatMessage.Part.Suggestion />
                   </ChatMessage.Content>
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex ml-2 self-start items-center gap-2 text-xs text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors hover:bg-accent hover:text-accent-foreground"
                       title="Сообщить о галлюцинации"
@@ -201,12 +201,6 @@ function CustomChatMessages() {
               )}
             </div>
             
-
-            <ChatMessage.Avatar className="shrink-0 self-start">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                U
-              </div>
-            </ChatMessage.Avatar>
 
           </ChatMessage>
         </div>
@@ -240,11 +234,6 @@ function TypingIndicator() {
   );
 }
 
-interface BackendChatMessage {
-  role: string;
-  content: string;
-}
-
 function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [status, setStatus] = useState<
@@ -259,19 +248,6 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
     }
   }, [initialMessages]);
 
-  // Convert frontend Message format to backend ChatMessage format
-  const convertToBackendMessage = (message: Message): BackendChatMessage => {
-    // Extract text content from message parts
-    const textContent = message.parts
-      .filter((part) => part.type === "text")
-      .map((part) => (part as { text: string }).text)
-      .join("");
-
-    return {
-      role: message.role,
-      content: textContent,
-    };
-  };
 
   const sendMessage = useCallback(
     async (message: Message) => {
@@ -280,12 +256,6 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
       try {
         // Add user message to state
         setMessages((prev) => [...prev, message]);
-
-        // Convert message history to backend format (excluding the initial welcome message)
-        const historyMessages = messages.filter((msg) => msg.id !== "1");
-        const history: BackendChatMessage[] = historyMessages.map(
-          convertToBackendMessage
-        );
 
         // Extract text content from the new message
         const messageText = message.parts
@@ -305,13 +275,6 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
 
         setMessages((prev) => [...prev, assistantMessage]);
         setStatus("streaming");
-
-        // Prepare request body
-        const requestBody = {
-          history,
-          message: messageText,
-          temperature: 0.7,
-        };
 
         // Make SSE request to backend
         // API_BASE_URL already includes '/api', so we use '/chat/stream'

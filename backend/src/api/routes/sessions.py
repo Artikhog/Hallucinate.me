@@ -57,7 +57,12 @@ async def send_user_message(
 
     llm_response_content = await get_llm_response(session_id, message)
 
-    return {"assistant_message": llm_response_content}
+    # Возвращаем обновлённую историю сообщений после сохранения ответа ассистента
+    updated_session = await get_user_session(session_id)
+    return {
+        "assistant_message": llm_response_content,
+        "messages": updated_session.messages,
+    }
 
 
 @router.get("/{session_id}/messages", response_model=list[Message])

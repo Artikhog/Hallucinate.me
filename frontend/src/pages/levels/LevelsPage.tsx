@@ -1,5 +1,4 @@
 import { LevelCard } from "@/entities/level/ui/LevelCard";
-import type { Level } from "@/shared/api/api";
 import { useGetLevelsQuery } from "@/shared/api/queries/getLevelsQuery";
 import { useStartLevelMutation } from "@/shared/api/queries/startLevelMutation";
 import { Loader2 } from "lucide-react";
@@ -75,10 +74,10 @@ import { useNavigate } from "react-router-dom";
 // ];
 export const LevelsPage = () => {
   const navigate = useNavigate();
-  const { data: levels, isLoading } = useGetLevelsQuery();
+  const { data: levels } = useGetLevelsQuery();
   const { mutate: startLevel } = useStartLevelMutation({
     onSuccess: (data) => {
-      navigate(`/chats?id=${data.id}`);
+      navigate(`/chat?id=${data.id}`);
     },
   });
   const onStartLevel = (levelId: string) => {
