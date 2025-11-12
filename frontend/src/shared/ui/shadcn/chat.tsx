@@ -13,7 +13,7 @@ import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { tokenService } from "@/shared/api/base";
+import {API_BASE_URL, tokenService} from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
 // import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
@@ -278,7 +278,7 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
 
         // Make SSE request to backend
         // API_BASE_URL already includes '/api', so we use '/chat/stream'
-        const response = await fetch(`http://localhost:8000/sessions/${sessionId}/message/stream?message=${messageText}`, {
+        const response = await fetch(`${API_BASE_URL}sessions/${sessionId}/message/stream?message=${messageText}`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${tokenService.getAccessToken()}`,
