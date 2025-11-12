@@ -26,9 +26,10 @@ import {
 } from "@/shared/ui/shadcn/ui/sidebar"
 import { sessionsApi } from "@/features/session/sessions-api.ts";
 import { useEffect, useState } from "react";
-import { authStore } from "@/features/auth/model/auth-store";
-import { observer } from "mobx-react-lite";
+import { useGetLevelsQuery } from "@/shared/api/queries/getLevelsQuery.ts";
 import type { GameSession } from "@/shared/api/api";
+import { observer } from "mobx-react-lite";
+import { authStore } from "@/features/auth/model/auth-store";
 
 // Main navigation items
 const navItems = [
@@ -58,13 +59,22 @@ export function RecentChatsSidebar() {
   const location = useLocation()
   const [sessions, setSessions] = useState<GameSession[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [levelsDictionary, setLevels] = useState<Record<string, string>>({})
+  const { data: levels } = useGetLevelsQuery();
 
   useEffect(() => {
+    if (!levels) return;
     const fetchSessions = async () => {
       setIsLoading(true)
       try {
-        const data = await sessionsApi.getUserSessions()
-        setSessions(data)
+        const sessions = await sessionsApi.getUserSessions()
+        const levelsDict = levels.reduce<Record<string, string>>((acc, l) => {
+          acc[l.id] = l.name;
+          return acc;
+        }, {});
+
+        setLevels(levelsDict)
+        setSessions(sessions)
       } catch (error) {
         console.error("Failed to fetch sessions:", error)
       } finally {
@@ -72,7 +82,7 @@ export function RecentChatsSidebar() {
       }
     }
     fetchSessions()
-  }, [])
+  }, [levels])
 
   return (
     <SidebarMenu>
@@ -94,14 +104,14 @@ export function RecentChatsSidebar() {
       )}
 
       {sessions.map((chat) => {
-        const isActive = location.pathname === `/chat/${chat.id}`
+        const isActive = location.pathname === `/chat?id=${chat.id}`
 
         return (
           <SidebarMenuItem key={chat.id}>
             <SidebarMenuButton asChild isActive={isActive}>
-              <Link to={`/chat/${chat.id}`}>
+              <Link to={`/chat?id=${chat.id}`}>
                 <MessageSquare className="opacity-60" />
-                <span>{chat.username || "Untitled Chat"}</span>
+                <span>{levelsDictionary[chat.level_id] || "Unknown theme"}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
