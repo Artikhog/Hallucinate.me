@@ -20,12 +20,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserResponse(UserBase):
-    id: str
-    score: int = 0
-    role: UserRole = UserRole.USER
-
-
-class User(UserResponse):
+class User(UserBase):
     username: str
     score: int

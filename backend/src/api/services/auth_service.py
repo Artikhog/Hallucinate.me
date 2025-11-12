@@ -4,6 +4,14 @@ import hashlib
 import secrets
 import uuid
 
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
+
+PASSWORD_SALT = os.getenv("PASSWORD_SALT")
+
 
 def get_hash(salt: str, password: str) -> str:
     return hashlib.pbkdf2_hmac(
@@ -12,9 +20,8 @@ def get_hash(salt: str, password: str) -> str:
 
 
 def get_password_hash(password: str) -> str:
-    salt = secrets.token_hex(16)
-    password_hash = get_hash(salt, password)
-    return f"{salt}:{password_hash.hex()}"
+    password_hash = get_hash(PASSWORD_SALT, password)
+    return f"{PASSWORD_SALT}:{password_hash.hex()}"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -37,6 +44,4 @@ async def register_user(user_data: UserRegister):
 
 async def get_user_by_login(login: str):
     score = db.get_score(login)
-    if not score:
-        return None
     return User(username=login, score=score)
