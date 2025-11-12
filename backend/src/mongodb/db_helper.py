@@ -7,7 +7,7 @@ import os
 from bson import objectid
 
 # TODO: uncomment for local testing
-# from mongo_mock import TableMock
+#from .mongo_mock import TableMock
 
 load_dotenv()
 
