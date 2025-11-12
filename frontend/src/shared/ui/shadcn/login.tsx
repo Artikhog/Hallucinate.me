@@ -4,18 +4,22 @@ import {Input} from "@/shared/ui/shadcn/ui/input"
 import {Label} from "@/shared/ui/shadcn/ui/label"
 import type {LoginCredentials} from "@/features/auth/api/auth-api.ts";
 import {useAuthStore} from "@/features/auth/model/auth-context.ts";
+import {useRef} from "react";
 
 export function Login() {
 
-    async function handle(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault(); // чтобы не перезагружалась страница
+    const authStore = useAuthStore();
+    const passwordRef = useRef();
+    const usernameRef = useRef();
 
-        const formData = new FormData(e.currentTarget);
-        const username = formData.get("email") as string;
-        const password = formData.get("password") as string;
+    async function handle(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+
+        const username = usernameRef.current.value;
+        const password = passwordRef.current.value;
 
         try {
-            await useAuthStore().login({username, password} as LoginCredentials)
+            await authStore.login({username, password} as LoginCredentials)
             window.location.href = '/'
         } catch (err: any) {
             alert('Login error. Try again')
@@ -44,6 +48,7 @@ export function Login() {
                                 type="email"
                                 placeholder="green@itmo.ru"
                                 required
+                                ref={usernameRef}
                             />
                         </div>
                         <div className="grid gap-2">
@@ -51,16 +56,15 @@ export function Login() {
                                 <Label htmlFor="password">Пароль</Label>
 
                             </div>
-                            <Input id="password" type="password" required />
+                            <Input id="password" type="password" required ref={passwordRef} />
                         </div>
+
+                        <Button type="submit" className="w-full">
+                            Login
+                        </Button>
                     </div>
                 </form>
             </CardContent>
-            <CardFooter className="flex-col gap-2">
-                <Button type="submit" className="w-full">
-                    Login
-                </Button>
-            </CardFooter>
         </Card>
     )
 }

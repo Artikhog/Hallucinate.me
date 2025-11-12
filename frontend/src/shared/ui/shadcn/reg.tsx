@@ -4,24 +4,30 @@ import {Label} from "@/shared/ui/shadcn/ui/label"
 import {Button} from "@/shared/ui/shadcn/ui/button"
 import {type RegisterData} from "@/features/auth/api/auth-api.ts";
 import {useAuthStore} from "@/features/auth/model/auth-context.ts";
+import {useRef} from "react";
 
 export function Registration() {
+
+    const authStore = useAuthStore();
+
+    const usernameRef = useRef();
+    const passwordRef = useRef();
+    const passwordAgainRef = useRef();
 
     async function handle(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
-        const formData = new FormData(e.currentTarget);
-        const username = formData.get("email") as string;
-        const password = formData.get("password") as string;
-        const password_again = formData.get("password_again") as string;
+        const username = usernameRef.current.value;
+        const password = passwordRef.current.value;
+        const password_again = passwordAgainRef.current.value;
 
         if (password !== password_again) {
-            alert('Пароли не совпадают')
+            alert('Password error')
             return;
         }
 
         try {
-            await useAuthStore().register({username, password} as RegisterData)
+            await authStore.register({username, password} as RegisterData)
             window.location.href = '/'
         } catch (err: any) {
             alert('Register error. Try again')
@@ -49,29 +55,28 @@ export function Registration() {
                                 type="email"
                                 placeholder="green@itmo.ru"
                                 required
+                                ref={usernameRef}
                             />
                         </div>
                         <div className="grid gap-2">
                             <div className="flex items-center">
                                 <Label htmlFor="password">Пароль</Label>
                             </div>
-                            <Input id="password" type="password" required />
+                            <Input id="password" type="password" required ref={passwordRef}/>
                         </div>
 
                         <div className="grid gap-2">
                             <div className="flex items-center">
                                 <Label htmlFor="password_again">Подтверждение</Label>
                             </div>
-                            <Input id="password_again" type="password" required />
+                            <Input id="password_again" type="password" required ref={passwordAgainRef}/>
                         </div>
+                        <Button type="submit" className="w-full">
+                            Register
+                        </Button>
                     </div>
                 </form>
             </CardContent>
-            <CardFooter className="flex-col gap-2">
-                <Button type="submit" className="w-full">
-                    Register
-                </Button>
-            </CardFooter>
         </Card>
     )
 }
