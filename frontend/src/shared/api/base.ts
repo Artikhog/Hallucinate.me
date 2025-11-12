@@ -6,6 +6,13 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
 // Создаем экземпляр axios
 export const apiClient = new Api({
     baseURL: API_BASE_URL,
+    securityWorker: () => {
+        return {
+            headers: {
+                Authorization: `Bearer ${tokenService.getAccessToken()}`,
+            },
+        };
+    },
 })
 
 // Интерфейс для токенов
