@@ -2,7 +2,7 @@ import { Api } from './api';
 
 // Базовый URL API
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/';
-
+console.log(API_BASE_URL)
 // Создаем экземпляр axios
 export const apiClient = new Api({
     baseURL: API_BASE_URL,

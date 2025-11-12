@@ -1,35 +1,20 @@
 import {apiClient} from '@/shared/api/base';
 import type {UserStats} from "@/features/auth/model/auth-store.ts";
-
-export interface LoginCredentials {
-  username: string;
-  password: string;
-}
-
-export interface RegisterData {
-  username: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  access_token: string,
-  token_type: string,
-  username: string
-}
+import type { TokenResponse, UserLogin, UserRegister } from '@/shared/api/api';
 
 export const authApi = {
-  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    const response = await apiClient.instance.post<AuthResponse>('/auth/login', credentials);
-    return response.data as AuthResponse;
+  login: async (credentials: UserLogin): Promise<TokenResponse> => {
+    const response = await apiClient.authentication.loginAuthLoginPost(credentials);
+    return response.data as TokenResponse;
   },
 
-  register: async (data: RegisterData): Promise<AuthResponse> => {
-    const response = await apiClient.instance.post<AuthResponse>('/auth/register', data);
-    return response.data as AuthResponse;
+  register: async (data: UserRegister): Promise<TokenResponse> => {
+    const response = await apiClient.authentication.registerAuthRegisterPost(data);
+    return response.data as TokenResponse;
   },
 
   getStats: async (): Promise<UserStats> => {
-    const response = await apiClient.instance.get('/users/me/stats');
+    const response = await apiClient.users.getUserStatsUsersMeStatsGet();
     return response.data;
   },
 };

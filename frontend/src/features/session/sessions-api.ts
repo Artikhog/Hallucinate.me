@@ -1,9 +1,10 @@
 import { apiClient } from '@/shared/api/base.ts'
-import type {UserSession} from "@/features/session/types/user-session.ts";
+import type { GameSession } from '@/shared/api/api';
 
 class SessionsApi {
-    async getUserSessions(): Promise<UserSession[]> {
-        const { data } = await apiClient.instance.get<UserSession[]>('/users/me/sessions')
+    async getUserSessions(): Promise<GameSession[]> {
+        const { data } = await apiClient.users.getUserStatsUsersMeSessionsGet();
+        // const { data } = await apiClient.instance.get<UserSession[]>('/users/me/sessions')
         return data
     }
 }

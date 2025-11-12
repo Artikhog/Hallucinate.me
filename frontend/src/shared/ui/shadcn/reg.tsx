@@ -49,10 +49,9 @@ export function Registration() {
                 <form onSubmit={handle}>
                     <div className="flex flex-col gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Электропочта</Label>
+                            <Label htmlFor="username">Электропочта</Label>
                             <Input
-                                id="email"
-                                type="email"
+                                id="username"
                                 placeholder="green@itmo.ru"
                                 required
                                 ref={usernameRef}

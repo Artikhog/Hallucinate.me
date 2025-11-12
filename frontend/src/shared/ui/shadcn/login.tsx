@@ -22,6 +22,7 @@ export function Login() {
             await authStore.login({username, password} as LoginCredentials)
             window.location.href = '/'
         } catch (err: any) {
+            console.log(err)
             alert('Login error. Try again')
         }
     }
@@ -45,7 +46,6 @@ export function Login() {
                             <Label htmlFor="email">Электропочта</Label>
                             <Input
                                 id="email"
-                                type="email"
                                 placeholder="green@itmo.ru"
                                 required
                                 ref={usernameRef}
