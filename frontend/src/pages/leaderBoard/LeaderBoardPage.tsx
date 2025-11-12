@@ -12,6 +12,6 @@ export const LeaderBoardPage = () => {
     }, [])
 
     return <div>{
-        leaders.map((leader) => <UserLeaderBoardCard user={leader} key={leader.user_id}/>)
+        leaders.map((leader, index) => <UserLeaderBoardCard place={index+1} user={leader} key={leader.username}/>)
     }</div>
 }

@@ -2,9 +2,9 @@ import {Card, CardContent, CardHeader, CardTitle} from "@/shared/ui/shadcn/ui/ca
 import {Input} from "@/shared/ui/shadcn/ui/input"
 import {Label} from "@/shared/ui/shadcn/ui/label"
 import {Button} from "@/shared/ui/shadcn/ui/button"
-import {type RegisterData} from "@/features/auth/api/auth-api.ts";
 import {useAuthStore} from "@/features/auth/model/auth-context.ts";
 import {useRef} from "react";
+import type { UserRegister } from "@/shared/api/api";
 
 export function Registration() {
 
@@ -32,7 +32,7 @@ export function Registration() {
         }
 
         try {
-            await authStore.register({username, password} as RegisterData)
+            await authStore.register({username, password} as UserRegister)
             window.location.href = '/'
         } catch (err: any) {
             alert('Register error. Try again')
@@ -57,7 +57,7 @@ export function Registration() {
                             <Label htmlFor="username">Электропочта</Label>
                             <Input
                                 id="username"
-                                placeholder="green@itmo.ru"
+                                placeholder="a.lysenko"
                                 required
                                 ref={usernameRef}
                             />

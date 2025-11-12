@@ -6,6 +6,7 @@ import {
   Target,
   MessageSquare,
   Plus,
+  ShieldQuestionMark,
 } from "lucide-react"
 
 import {
@@ -23,10 +24,12 @@ import {
   SidebarGroupBottom,
   SidebarUser
 } from "@/shared/ui/shadcn/ui/sidebar"
-import {useAuth} from "@/features/auth/model/auth-context.ts";
-import {sessionsApi} from "@/features/session/sessions-api.ts";
-import {useEffect, useState} from "react";
-import type {UserSession} from "@/features/session/types/user-session.ts";
+import { useAuth } from "@/features/auth/model/auth-context.ts";
+import { sessionsApi } from "@/features/session/sessions-api.ts";
+import { useEffect, useState } from "react";
+import type { UserSession } from "@/features/session/types/user-session.ts";
+import { authStore } from "@/features/auth/model/auth-store";
+import { observer } from "mobx-react-lite";
 
 // Main navigation items
 const navItems = [
@@ -44,6 +47,11 @@ const navItems = [
     title: "Лидеры",
     url: "/leaders",
     icon: Trophy,
+  },
+  {
+    title: "Галлюцинации",
+    url: "/reports",
+    icon: ShieldQuestionMark,
   },
 ]
 
@@ -64,51 +72,53 @@ export function RecentChatsSidebar() {
         setIsLoading(false)
       }
     }
-
     fetchSessions()
   }, [])
 
   return (
-      <SidebarMenu>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link to="/chat">
+            <Plus />
+            <span>Новый чат</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+
+      {isLoading && (
         <SidebarMenuItem>
           <SidebarMenuButton asChild>
-            <Link to="/chat">
-              <Plus />
-              <span>Новый чат</span>
-            </Link>
+            <span>Загрузка...</span>
           </SidebarMenuButton>
         </SidebarMenuItem>
+      )}
 
-        {isLoading && (
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <span>Загрузка...</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-        )}
+      {sessions.map((chat) => {
+        const isActive = location.pathname === `/chat/${chat.id}`
 
-        {sessions.map((chat) => {
-          const isActive = location.pathname === `/chat/${chat.id}`
-
-          return (
-              <SidebarMenuItem key={chat.id}>
-                <SidebarMenuButton asChild isActive={isActive}>
-                  <Link to={`/chat/${chat.id}`}>
-                    <MessageSquare className="opacity-60" />
-                    <span>{chat.username || "Untitled Chat"}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-          )
-        })}
-      </SidebarMenu>
+        return (
+          <SidebarMenuItem key={chat.id}>
+            <SidebarMenuButton asChild isActive={isActive}>
+              <Link to={`/chat/${chat.id}`}>
+                <MessageSquare className="opacity-60" />
+                <span>{chat.username || "Untitled Chat"}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
   )
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export const AppSidebar = observer(({ ...props }: React.ComponentProps<typeof Sidebar>) => {
   const location = useLocation()
-  const auth = useAuth()
+  const auth = authStore;
 
+  useEffect(() => {
+    auth.getUserStats();
+  }, [])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -166,13 +176,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
         <SidebarGroupBottom>
           <SidebarUser
-              successfulReports={auth.useStats?.successful_reports ?? 0}
-              sessionsPlayed={auth.useStats?.sessions_played ?? 0}
-              globalRank={auth.useStats?.global_rank ?? 0}
-              onLogout={() => {
-                  auth.logout();
-                  window.location.href = '/auth/login';
-              }}
+            successfulReports={auth.userStats?.successful_reports ?? 0}
+            sessionsPlayed={auth.userStats?.sessions_played ?? 0}
+            globalRank={auth.userStats?.global_rank ?? 0}
+            onLogout={() => {
+              auth.logout();
+              window.location.href = '/auth/login';
+            }}
           />
         </SidebarGroupBottom>
       </SidebarContent>
@@ -180,4 +190,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarRail />
     </Sidebar>
   )
-}
+});
+
+AppSidebar.displayName = "AppSidebar";
