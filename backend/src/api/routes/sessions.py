@@ -8,8 +8,11 @@ from api.services.game_service import (
     add_message_to_session,
     get_llm_response,
     validate_hallucination_report,
+    stream_llm_response,
 )
 from mongodb.db_helper import db
+from fastapi.responses import StreamingResponse
+import json
 
 router = APIRouter()
 
@@ -54,8 +57,6 @@ async def send_user_message(
 
     llm_response_content = await get_llm_response(session_id, message)
 
-    await add_message_to_session(session_id, "assistant", llm_response_content)
-
     return {"assistant_message": llm_response_content}
 
 
@@ -86,17 +87,61 @@ async def report_hallucination(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    db.save_user_report(
+    validation_result = await validate_hallucination_report(session_id, report)
+    # Сохраняем репорт и вердикт в истории в единый массив reports
+    db.add_report_with_verdict(
         session_id,
         {"incorrect_fact": report.incorrect_fact, "source_url": report.source_url},
-    )
-    validation_result = await validate_hallucination_report(report)
-
-    db.save_assistant_verdict(
-        session_id, validation_result, validation_result["is_valid"]
+        validation_result,
     )
 
     if validation_result["is_valid"]:
         db.add_score(current_user.username, session_id)
 
     return validation_result
+
+
+@router.get("/reports/my")
+async def get_my_reports(current_user: User = Depends(get_current_user)):
+    """
+    Получить список собственных репортов пользователя по всем сессиям.
+    """
+    reports = db.get_user_reports(current_user.username)
+    return reports
+
+
+@router.post("/{session_id}/message/stream")
+async def send_user_message_stream(
+    session_id: str, message: str, current_user: User = Depends(get_current_user)
+):
+    session = await get_user_session(session_id)
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+
+    # Сохраняем сообщение пользователя
+    await add_message_to_session(session_id, "user", message)
+
+    # Оборачиваем генератор чанков в SSE-стрим
+    def sse_generator():
+        try:
+            for chunk in stream_llm_response(session_id, message):
+                data = json.dumps({"content": chunk}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+        except Exception as e:
+            error_data = json.dumps({"error": str(e)}, ensure_ascii=False)
+            yield f"data: {error_data}\n\n"
+        finally:
+            yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

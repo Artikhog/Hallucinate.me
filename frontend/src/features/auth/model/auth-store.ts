@@ -133,7 +133,7 @@ export class AuthStore {
       });
     } catch (error) {
       // Если запрос профиля failed, очищаем токены
-      tokenService.clearTokens();
+      // tokenService.clearTokens();
       
       runInAction(() => {
         this.userStats = null;

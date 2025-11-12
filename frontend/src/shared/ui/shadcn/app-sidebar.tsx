@@ -109,6 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
   const auth = useAuth()
 
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>

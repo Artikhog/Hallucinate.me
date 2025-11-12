@@ -1,5 +1,5 @@
 import requests
-import wikipedia.api as wikipedia_api
+from validator.wikipedia.api import search_and_get_wikipedia, get_wikipedia_content_tool_definition
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 import os
@@ -59,7 +59,7 @@ def validate_claim(
     
     if wikipedia_page:
         try:
-            wikipedia_content = wikipedia_api.get_wikipedia_page(wikipedia_page)
+            wikipedia_content = get_wikipedia_page(wikipedia_page)
         except Exception as e:
             print(f"Warning: Could not fetch Wikipedia page: {e}")
     
@@ -154,7 +154,7 @@ def validate_claim_with_wikipedia_search(
             print(f"Warning: Could not fetch source URL: {e}")
     
     # Get Wikipedia tool definitions
-    wikipedia_tool = wikipedia_api.get_wikipedia_content_tool_definition()
+    wikipedia_tool = get_wikipedia_content_tool_definition()
     
     # Build initial user prompt
     user_prompt_parts = [
@@ -234,7 +234,7 @@ After gathering all necessary information, respond with a JSON object containing
                         
                         # Execute Wikipedia search
                         try:
-                            search_results = wikipedia_api.search_and_get_wikipedia(query, max_pages)
+                            search_results = search_and_get_wikipedia(query, max_pages)
                             wikipedia_content.update(search_results)
                             
                             # Format results for LLM (truncate long content)

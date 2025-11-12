@@ -12,26 +12,34 @@ import {
 import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
-import { useState, useCallback } from "react";
-import { API_BASE_URL } from "@/shared/api/base";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { API_BASE_URL, apiClient, tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
-
-const initialMessages: Message[] = [
-  {
-    id: "1",
-    role: "assistant",
-    parts: [
-      {
-        type: "text",
-        text: "Привет! Чем могу помочь?",
-      },
-    ],
-  },
-];
+import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
+import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
+import { useParams, useSearchParams } from "react-router-dom";
+import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
 
 export function ChatSection() {
-  const handler = useChat();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("id") || "";
+
+  console.log("sessionId", sessionId);
+
+  const { data: session } = useGetSessionInfoQuery(sessionId || "");
+
+  const { data: messages = [] } = useGetSessionMessagesQuery(sessionId || "");
+
+  const initialMessages = useMemo(() => messages?.map((message) => ({
+    id: `msg-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`,
+    role: message.role,
+    parts: [{ type: "text", text: message.content }],
+  })), [messages]);
+
+  const handler = useChat(initialMessages, sessionId || "");
 
   return (
     <ChatSectionUI
@@ -76,6 +84,8 @@ export function ChatSection() {
 }
 
 function CustomChatMessages() {
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("id") || "";
   const { messages } = useChatUI();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -100,6 +110,18 @@ function CustomChatMessages() {
     setSelectedMessage(message);
     setReportModalOpen(true);
   };
+  const { mutate: reportHallucination } = useReportHallucinationMutation({
+    onSuccess: () => {
+      setReportModalOpen(false);
+    },
+  });
+
+  const handleReportHallucinationSubmit = (message: Message, reason: string, sourceUrl: string) => {
+    reportHallucination({ sessionId: sessionId || "", report: { incorrect_fact: reason, source_url: sourceUrl } });
+    setReportModalOpen(false);
+  };
+
+
   return (
     <>
       {selectedMessage && reportModalOpen && (
@@ -107,7 +129,7 @@ function CustomChatMessages() {
           open={reportModalOpen}
           onOpenChange={setReportModalOpen}
           message={selectedMessage}
-          onSubmit={handleReportHallucination}
+          onSubmit={handleReportHallucinationSubmit}
         />
       )}
       {messages.map((message, index) => (
@@ -223,11 +245,19 @@ interface BackendChatMessage {
   content: string;
 }
 
-function useChat(): ChatHandler {
+function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [status, setStatus] = useState<
     "streaming" | "ready" | "error" | "submitted"
   >("ready");
+
+  console.log("messages", messages, initialMessages, sessionId);
+
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
 
   // Convert frontend Message format to backend ChatMessage format
   const convertToBackendMessage = (message: Message): BackendChatMessage => {
@@ -285,38 +315,29 @@ function useChat(): ChatHandler {
 
         // Make SSE request to backend
         // API_BASE_URL already includes '/api', so we use '/chat/stream'
-        const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+        const response = await fetch(`http://localhost:8000/sessions/${sessionId}/message/stream?message=${messageText}`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Authorization": `Bearer ${tokenService.getAccessToken()}`,
           },
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        if (!response.body) {
-          throw new Error("Response body is not readable");
-        }
+        })
 
         // Используем ReadableStream для чтения потока
-        const reader = response.body.getReader();
+        const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let streamedContent = "";
         let buffer = "";
 
         try {
           while (true) {
-            const { done, value } = await reader.read();
+            const { done, value } = await reader?.read() || { done: false, value: null };
 
             if (done) {
               break;
             }
 
             // Декодируем chunk и добавляем в буфер
-            buffer += decoder.decode(value, { stream: true });
+            buffer += decoder.decode(value || new Uint8Array(), { stream: true });
 
             // Обрабатываем все полные SSE сообщения из буфера
             const lines = buffer.split("\n");
@@ -396,7 +417,7 @@ function useChat(): ChatHandler {
 
           setStatus("ready");
         } finally {
-          reader.releaseLock();
+          reader?.releaseLock?.();
         }
       } catch (error) {
         console.error("Error sending message:", error);

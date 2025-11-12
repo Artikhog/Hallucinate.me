@@ -6,8 +6,7 @@ import certifi
 import os
 from bson import objectid
 
-# TODO: uncomment for local testing
-#from .mongo_mock import TableMock
+from .mongo_mock import TableMock
 
 load_dotenv()
 
@@ -17,6 +16,7 @@ MONGO_DB = os.getenv("MONGO_DB")
 MONGO_USER = os.getenv("MONGO_USER")
 MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
 MONGO_REPLICA_SET = os.getenv("MONGO_REPLICA_SET", "rs01")
+IS_LOCAL_CONNECTION = os.getenv("IS_LOCAL", "false") == "true"
 
 MONGO_SILENT = os.getenv("MONGO_SILENT", "false") == "true"
 
@@ -42,37 +42,65 @@ def download_yandex_ca_certificate():
     if not os.path.exists(cert_path):
         try:
             urllib.request.urlretrieve(cert_url, cert_path)
-            maybe_print(f"✅ Sert successfully downloaded: {cert_path}")
+            maybe_print(f"✅ Cert successfully downloaded: {cert_path}")
         except Exception as e:
-            maybe_print(f"❌ Unable to download a sert: {e}")
+            maybe_print(f"❌ Unable to download a cert: {e}")
             return None
     else:
-        maybe_print(f"✅ Using existing sert: {cert_path}")
+        maybe_print(f"✅ Using existing cert: {cert_path}")
     return cert_path
 
 
 def connect_to_mongodb(db_name):
     try:
         if not db_name:
-            db_name = MONGO_DB
-        cert_path = download_yandex_ca_certificate()
-        if not cert_path:
-            cert_path = certifi.where()
-            maybe_print(f"⚠️ using default serts: certifi")
+            db_name = MONGO_DB or "hallucinate_me"
+        
+        # Check if connecting to local MongoDB
+        hosts = (MONGO_HOSTS or "localhost").split(",")
+        is_local = IS_LOCAL_CONNECTION or any(host.lower().strip().split(":")[0] in ["localhost", "127.0.0.1", "mongo"] for host in hosts)
+        
+        # Build connection URL
+        if is_local:
+            # Local MongoDB connection (Docker)
+            user = MONGO_USER or "admin"
+            password = MONGO_PASSWORD or "admin"
+            host = hosts[0].strip() if hosts else "localhost"
+            
+            url = "mongodb://{user}:{pw}@{host}/{db}?authSource=admin".format(
+                user=quote(user),
+                pw=quote(password),
+                host=host,
+                db=db_name,
+            )
+            
+            print(url)
+            
+            client = MongoClient(url, serverSelectionTimeoutMS=5000)
+            maybe_print(f"✅ Connecting to local MongoDB at {host}")
+        else:
+            # Cloud MongoDB connection (Yandex Cloud)
+            cert_path = download_yandex_ca_certificate()
+            if not cert_path:
+                cert_path = certifi.where()
+                maybe_print("⚠️ using default certs: certifi")
 
-        hosts = MONGO_HOSTS.split(",")
+            user = MONGO_USER
+            password = MONGO_PASSWORD
+            auth_src = db_name
+            
+            url = "mongodb://{user}:{pw}@{hosts}/?authSource={auth_src}&replicaSet={rs}".format(
+                user=quote(user),
+                pw=quote(password),
+                hosts=",".join(hosts),
+                rs=MONGO_REPLICA_SET,
+                auth_src=auth_src,
+            )
 
-        url = "mongodb://{user}:{pw}@{hosts}/?replicaSet={rs}&authSource={auth_src}".format(
-            user=quote(MONGO_USER),
-            pw=quote(MONGO_PASSWORD),
-            hosts=",".join(hosts),
-            rs=MONGO_REPLICA_SET,
-            auth_src=db_name,
-        )
-
-        client = MongoClient(
-            url, tls=True, tlsCAFile=cert_path, serverSelectionTimeoutMS=5000
-        )
+            client = MongoClient(
+                url, tls=True, tlsCAFile=cert_path, serverSelectionTimeoutMS=5000
+            )
+            maybe_print("✅ Connecting to cloud MongoDB")
 
         client.admin.command("ping")
         maybe_print("✅ Connected to MongoDB")
@@ -109,7 +137,7 @@ def init_collections(db):
 class DatabaseHelper:
     def __init__(self, db_name=None):
         self.db = connect_to_mongodb(db_name)
-        if self.db:
+        if self.db is not None:
             self.users = self.db.users
             self.scores = self.db.scores
             self.chat_histories = self.db.chat_histories
@@ -206,14 +234,66 @@ class DatabaseHelper:
             },
         )
 
+    def add_report_with_verdict(self, history_id, report, verdict):
+        """
+        Добавляет запись с репортом пользователя и вердиктом ассистента
+        в массив reports внутри истории.
+        Структура элемента:
+        {
+            "report": {incorrect_fact, source_url},
+            "verdict": {...},
+            "is_valid": <bool>,  # валиден ли репорт (т.е. факт действительно ложный)
+            "created_at": datetime
+        }
+        """
+        is_valid = bool(verdict.get("is_valid", False))
+        entry = {
+            "report": report,
+            "verdict": verdict,
+            "is_valid": is_valid,
+            "created_at": datetime.now(),
+        }
+        return self.chat_histories.update_one(
+            {"_id": objectid.ObjectId(history_id)},
+            {
+                "$push": {"reports": entry},
+                "$set": {"updated_at": datetime.now()},
+            },
+        )
+
+    def get_user_reports(self, login: str):
+        """
+        Возвращает список всех репортов пользователя по всем его сессиям.
+        Каждый элемент содержит идентификатор сессии, level_id и сам репорт с вердиктом.
+        """
+        cursor = self.chat_histories.find(
+            {"login": login, "reports": {"$exists": True, "$ne": []}}
+        ).sort("updated_at", -1)
+        results = []
+        for doc in cursor:
+            session_id = str(doc["_id"])
+            level_id = doc.get("level_id")
+            for entry in doc.get("reports", []):
+                results.append(
+                    {
+                        "session_id": session_id,
+                        "level_id": level_id,
+                        "report": entry.get("report"),
+                        "verdict": entry.get("verdict"),
+                        "is_valid": entry.get("is_valid"),
+                        "created_at": entry.get("created_at"),
+                    }
+                )
+        return results
+
     def get_user_chat_history(self, history_id):
         return self.chat_histories.find_one({"_id": objectid.ObjectId(history_id)}, {"_id": 0})
 
     def get_user_chat_histories(self, login: str):
         return [
-            doc["data"]
+            fix_id(doc)
             for doc in self.chat_histories.find(
-                {"login": login}, {"_id": 0, "updated_at": 0, "login": 0}
+                {"login": login}
             ).sort("updated_at", -1)
         ]
 
@@ -222,7 +302,7 @@ class DatabaseHelper:
         return user is not None
 
     def get_all_users(self):
-        return list(doc["login"] for doc in self.users.find({}, {"password": 0}))
+        return [doc["login"] for doc in self.users.find({}, {"password": 0})]
 
     def delete_user(self, login: str):
         self.users.delete_one({"login": login})
@@ -230,7 +310,7 @@ class DatabaseHelper:
         self.chat_histories.delete_many({"login": login})
         maybe_print(f"✅ User {login} successfully deleted")
 
-    def crete_level(self, data):
+    def create_level(self, data):
         return self.levels.insert_one(data).inserted_id
 
     def get_level(self, level_id):
