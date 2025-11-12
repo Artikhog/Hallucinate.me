@@ -20,7 +20,6 @@ import { ReportModal } from "@/features/report/modal/report-modal";
 import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
-import type { HallucinationReport } from "@/shared/api/api";
 import { Button } from "./ui/button";
 
 export function ChatSection() {

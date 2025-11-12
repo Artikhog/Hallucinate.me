@@ -8,7 +8,6 @@ import { LeaderBoardPage } from './leaderBoard/LeaderBoardPage';
 import Layout from '@/app/layouts/layout';
 import { RegisterPage } from "@/pages/login/RegisterPage.tsx";
 import { ReportsPage } from './reports/Reports';
-import { ProtectedRoute } from '@/features/auth/lib/protected-route';
 
 export const router = createBrowserRouter([
     // {

@@ -24,12 +24,11 @@ import {
   SidebarGroupBottom,
   SidebarUser
 } from "@/shared/ui/shadcn/ui/sidebar"
-import { useAuth } from "@/features/auth/model/auth-context.ts";
 import { sessionsApi } from "@/features/session/sessions-api.ts";
 import { useEffect, useState } from "react";
-import type { UserSession } from "@/features/session/types/user-session.ts";
 import { authStore } from "@/features/auth/model/auth-store";
 import { observer } from "mobx-react-lite";
+import type { GameSession } from "@/shared/api/api";
 
 // Main navigation items
 const navItems = [
@@ -57,7 +56,7 @@ const navItems = [
 
 export function RecentChatsSidebar() {
   const location = useLocation()
-  const [sessions, setSessions] = useState<UserSession[]>([])
+  const [sessions, setSessions] = useState<GameSession[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {

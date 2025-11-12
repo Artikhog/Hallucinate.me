@@ -48,10 +48,10 @@ export function Login() {
                 <form onSubmit={handle}>
                     <div className="flex flex-col gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Электропочта</Label>
+                            <Label htmlFor="email">Имя</Label>
                             <Input
                                 id="email"
-                                placeholder="olegShipulin"
+                                placeholder="username"
                                 required
                                 ref={usernameRef}
                             />

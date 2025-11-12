@@ -1,7 +1,6 @@
 import { Button } from "@/shared/ui/shadcn/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/shadcn/ui/card";
-import { Item } from "@/shared/ui/shadcn/ui/item";
-import { Badge, CheckCircle, Clock, ExternalLink, XCircle } from "lucide-react";
+import { CheckCircle, Clock, ExternalLink, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface ReportData {
