@@ -14,7 +14,7 @@ export interface RegisterData {
 export interface AuthResponse {
   access_token: string,
   token_type: string,
-  user_id: string
+  username: string
 }
 
 export const authApi = {

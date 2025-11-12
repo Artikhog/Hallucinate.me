@@ -1,6 +1,6 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { authApi, type LoginCredentials, type RegisterData, type AuthResponse } from '../api/auth-api';
-import { tokenService } from '@/shared/api/base';
+import {apiClient, tokenService} from '@/shared/api/base';
 
 export interface UserStats {
   total_score: number;
@@ -40,7 +40,21 @@ export class AuthStore {
       this.setError(null);
 
       const data: AuthResponse = await authApi.login(credentials);
-      tokenService.setTokens(data.access_token);
+
+      apiClient.instance.interceptors.request.use(
+          (config) => {
+            const token = data.access_token;
+            if (token) {
+              config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+          },
+          (error) => {
+            return Promise.reject(error);
+          }
+      );
+
+      await tokenService.setTokens(data.access_token);
       const stats = await authApi.getStats();
 
       runInAction(() => {
@@ -63,11 +77,10 @@ export class AuthStore {
       this.setError(null);
 
       const response: AuthResponse = await authApi.register(data);
-      tokenService.setTokens(response.access_token);
-      const stats = await authApi.getStats();
+      await tokenService.setTokens(response.access_token);
 
       runInAction(() => {
-        this.userStats = stats;
+        this.userStats = null;
         this.isAuthenticated = true;
         this.isLoading = false;
       });
@@ -101,6 +114,15 @@ export class AuthStore {
         });
         return;
       }
+      apiClient.instance.interceptors.request.use(
+          (config) => {
+            config.headers.Authorization = token;
+            return config;
+          },
+          (error) => {
+            return Promise.reject(error);
+          }
+      );
 
       const user = await authApi.getStats();
       
