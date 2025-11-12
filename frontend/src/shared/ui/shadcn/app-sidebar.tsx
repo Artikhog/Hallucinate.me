@@ -20,7 +20,10 @@ import {
   SidebarMenuButton,
   SidebarRail,
   SidebarSeparator,
+  SidebarGroupBottom,
+  SidebarUser
 } from "@/shared/ui/shadcn/ui/sidebar"
+import {useAuth} from "@/features/auth/model/auth-context.ts";
 
 // Main navigation items
 const navItems = [
@@ -62,6 +65,7 @@ const recentChats = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const location = useLocation()
+  const auth = useAuth()
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -139,6 +143,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarGroupBottom>
+          <SidebarUser
+              successfulReports={auth.useStats?.successful_reports ?? 0}
+              sessionsPlayed={auth.useStats?.sessions_played ?? 0}
+              globalRank={auth.useStats?.global_rank ?? 0}
+              onLogout={() => {
+                  auth.logout();
+                  window.location.href = '/auth/login';
+              }}
+          />
+        </SidebarGroupBottom>
       </SidebarContent>
 
       <SidebarRail />

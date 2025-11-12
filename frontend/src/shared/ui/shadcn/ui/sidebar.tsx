@@ -23,6 +23,8 @@ import {
   TooltipTrigger,
 } from "@/shared/ui/shadcn/ui/tooltip"
 
+import { LogOut } from "lucide-react"
+
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
@@ -391,6 +393,17 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+function SidebarGroupBottom({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+      <div
+          data-slot="sidebar-group-bottom"
+          data-sidebar="group-bottom"
+          className={cn("relative flex w-full min-w-0 flex-col p-2 mt-auto", className)}
+          {...props}
+      />
+  )
+}
+
 function SidebarGroupLabel({
   className,
   asChild = false,
@@ -696,6 +709,40 @@ function SidebarMenuSubButton({
   )
 }
 
+function SidebarUser({
+   successfulReports,
+   sessionsPlayed,
+   globalRank,
+   onLogout,
+                     }: {
+  successfulReports: number
+  sessionsPlayed: number
+  globalRank: number
+  onLogout?: () => void
+}) {
+  return (
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-semibold text-foreground">
+          Rank: #{globalRank}
+        </span>
+
+          <span className="text-xs text-muted-foreground">
+          {successfulReports} / {sessionsPlayed}
+        </span>
+        </div>
+
+        <button
+            onClick={onLogout}
+            title="Logout"
+            className="ml-2 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
+      </div>
+  )
+}
+
 export {
   Sidebar,
   SidebarContent,
@@ -704,6 +751,7 @@ export {
   SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarGroupBottom,
   SidebarHeader,
   SidebarInput,
   SidebarInset,
@@ -721,4 +769,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  SidebarUser,
 }
