@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from api.models.request_response import UserStats
-from api.models.session import GameSession, Message
+from api.models.session import GameSession, Message, MessageRole
 from api.dependencies import get_current_user
 from mongodb.db_helper import db
 import uuid
@@ -34,15 +34,29 @@ async def get_user_stats(current_user: dict = Depends(get_current_user)):
 
 @router.get("/me/sessions", response_model=list[GameSession])
 async def get_user_sessions(current_user: dict = Depends(get_current_user)):
-    datas = db.get_user_chat_histories(current_user.username)
-    return [
-        GameSession(
-            id=data["session_id"],
-            level_id=data["level_id"],
-            username=data["username"],
-            messages=[
-                Message(role=doc["type"], content=doc["text"]) for doc in data["data"]
-            ],
+    sessions = db.get_user_chat_histories(current_user.username)
+    result = []
+    for session in sessions:
+        # Map message types to MessageRole enum
+        messages = []
+        for doc in session.get("data", []):
+            msg_type = doc.get("type", "").lower()
+            # Map database types to enum values
+            if msg_type == "user":
+                role = MessageRole.USER
+            elif msg_type in ["assistant", "llm"]:
+                role = MessageRole.ASSISTANT
+            else:
+                # Default to user if unknown type
+                role = MessageRole.USER
+            messages.append(Message(role=role, content=doc.get("text", "")))
+        
+        result.append(
+            GameSession(
+                id=str(session["id"]),
+                level_id=str(session["level_id"]),
+                username=session["login"],
+                messages=messages,
+            )
         )
-        for data in datas
-    ]
+    return result

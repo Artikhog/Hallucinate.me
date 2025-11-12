@@ -14,7 +14,7 @@ if __name__ == "__main__":
     assert db.add_user("login3", "12345")
     assert not db.authenticate_user("login2", "123")
 
-    level_id = db.crete_level({"base_score": 100})
+    level_id = db.create_level({"base_score": 100})
 
     session_id = db.start_history("login1", level_id)
     db.update_history(session_id, "short chat", "USER")
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         [{"text": "short chat", "type": "USER"}, {"text": "long chat", "type": "LLM"}]
     ]
 
-    level_id_2 = db.crete_level({"base_score": 300})
+    level_id_2 = db.create_level({"base_score": 300})
     session_id2 = db.start_history("login1", level_id_2)
     db.update_history(session_id2, "new chat", "ASSISTENT")
     assert db.get_user_chat_histories("login1") == [
