@@ -13,14 +13,12 @@ import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { API_BASE_URL, apiClient, tokenService } from "@/shared/api/base";
+import { API_BASE_URL, tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
-// import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
 import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
-import { Button } from "./ui/button";
 import { sendedReportStore } from "@/features/report/section/sendedReportStore";
 import type { ReportResult } from "@/features/report/list/report-card";
 
@@ -90,9 +88,7 @@ function CustomChatMessages() {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   // Сообщение о галлюцинации
-  const [reportedMessageId, setReportedMessageId] = useState<string>();
-
-  const navigate = useNavigate();
+  const [_, setReportedMessageId] = useState<string>();
 
   const handleCopy = async (message: Message) => {
     const textContent = message.parts
