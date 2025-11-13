@@ -18,17 +18,19 @@ async def get_user_stats(current_user: dict = Depends(get_current_user)):
     successful_reports = sum(session["is_valid"] for session in sessions)
 
     leaderboard = db.get_all_scores()
-    global_rank = leaderboard.index(
-        {"points": score, "login": current_user.username}
-    )
+    index = -1
+    for i in range(len(leaderboard)):
+        if leaderboard[i]['login'] == current_user.username:
+            index = i
+            break
 
-    assert global_rank
+    assert index != -1
 
     return UserStats(
         total_score=score,
         sessions_played=sessions_played,
         successful_reports=successful_reports,
-        global_rank=global_rank,
+        global_rank=index + 1,
     )
 
 
