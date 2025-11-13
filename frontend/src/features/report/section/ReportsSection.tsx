@@ -14,10 +14,12 @@ export const ReportsSection = observer(() => {
     const sended = sendedReportStore;
 
     useEffect(() => {
-        apiClient.gameSessions.getMyReportsSessionsReportsMyGet().then(response => setReports(response.data));
-    }, []);
+        if (sended.waiting === false) {
+            apiClient.gameSessions.getMyReportsSessionsReportsMyGet().then(response => setReports(response.data));
+        }
+    }, [sended.waiting]);
 
-    const chatReports = useMemo(() => reports.filter((report) => report.session_id === sessionId), [reports])
+    const chatReports = useMemo(() => reports.filter((report) => report.session_id === sessionId), [reports, sessionId])
 
     if (chatReports.length <= 0) {
         return <></>
@@ -28,9 +30,6 @@ export const ReportsSection = observer(() => {
         }
         {
             sended.waiting && <LoadingSpinner />
-        }
-        {
-            sended.result && <ReportChatCard data={sended.result} />
         }
     </div>
 })
