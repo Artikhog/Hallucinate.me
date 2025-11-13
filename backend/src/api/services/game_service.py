@@ -110,7 +110,7 @@ async def validate_hallucination_report(session_id: str, report: HallucinationRe
     wikipedia_sources = result.get("wikipedia_sources", [])
 
     return {
-        "is_valid": not is_true,
+        "is_valid": is_true,
         "reasoning": reasoning,
         "wikipedia_sources": wikipedia_sources,
     }
