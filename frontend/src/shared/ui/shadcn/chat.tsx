@@ -13,7 +13,7 @@ import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import {API_BASE_URL, tokenService} from "@/shared/api/base";
+import { API_BASE_URL, apiClient, tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
 // import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
@@ -21,14 +21,12 @@ import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessa
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
 import { Button } from "./ui/button";
+import { sendedReportStore } from "@/features/report/section/sendedReportStore";
+import type { ReportResult } from "@/features/report/list/report-card";
 
 export function ChatSection() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("id") || "";
-
-  console.log("sessionId", sessionId);
-
-  // const { data: session } = useGetSessionInfoQuery(sessionId || "");
 
   const { data: messages = [] } = useGetSessionMessagesQuery(sessionId || "");
 
@@ -93,8 +91,6 @@ function CustomChatMessages() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   // Сообщение о галлюцинации
   const [reportedMessageId, setReportedMessageId] = useState<string>();
-  const [reportDescription, setReportDescription] = useState<string>();
-  const [reportedMessageResponse, setReportedMessageResponse] = useState<any>();
 
   const navigate = useNavigate();
 
@@ -120,14 +116,14 @@ function CustomChatMessages() {
   };
   const { mutate: reportHallucination } = useReportHallucinationMutation({
     onSuccess: (data) => {
-      setReportedMessageResponse(data);
+      sendedReportStore.setResult(data as unknown as ReportResult);
       setReportModalOpen(false);
     },
   });
 
   const handleReportHallucinationSubmit = (_: Message, reason: string, sourceUrl: string) => {
     setReportedMessageId(_.id);
-    setReportDescription(reason);
+    sendedReportStore.setReport(reason);
     reportHallucination({ sessionId: sessionId || "", report: { incorrect_fact: reason, source_url: sourceUrl } });
     setReportModalOpen(false);
   };
@@ -210,29 +206,10 @@ function CustomChatMessages() {
                   </div>
                 </>
               )}
-              {
-                reportedMessageId === message.id && <div>{reportDescription}
-                  {reportedMessageResponse === undefined ? <Loader2 className="animate-spin"/> : 
-                  <div>Ответ {!reportedMessageResponse?.is_valid && "не"} зачтен: {reportedMessageResponse?.reasoning}</div>}
-                  <Button variant="secondary" onClick={() => navigate("/reports")}>Подробнее</Button></div>
-              }
             </div>
           </ChatMessage>
         </div>
       ))}
-      {/* {
-        reportResponses.map((response) =>
-          <div
-            key={response.id || index}
-            className="group animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            <ChatMessage
-              message={message}
-              isLast={index === messages.length - 1}
-              className="flex gap-3"
-            ></ChatMessage>
-          </div>)
-      } */}
     </>
   );
 }
