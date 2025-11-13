@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate-api": "swagger-typescript-api generate --p http://localhost:8000/openapi.json --output ./src/shared/api --name api.ts --axios -r --extract-enums --module-name-index 2 --module-name-first-tag"
+    "generate-api": "swagger-typescript-api generate --p http://84.201.143.213:8000/openapi.json --output ./src/shared/api --name api.ts --axios -r --extract-enums --module-name-index 2 --module-name-first-tag"
   },
   "dependencies": {
     "@llamaindex/chat-ui": "^0.6.1",

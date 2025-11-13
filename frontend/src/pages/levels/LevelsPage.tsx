@@ -5,7 +5,6 @@ import { Loader2 } from "lucide-react";
 import { Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 
-// const LEVELS_DATA: Level[] = [
 //   {
 //     id: "1",
 //     name: "История Древнего Рима",

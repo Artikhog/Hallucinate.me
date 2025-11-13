@@ -523,6 +523,25 @@ export class Api<
       }),
 
     /**
+     * @description Получить список собственных репортов пользователя по всем сессиям.
+     *
+     * @tags Game Sessions
+     * @name GetMyReportsSessionsReportsMyGet
+     * @summary Get My Reports
+     * @request GET:/sessions/reports/my
+     * @secure
+     * @response `200` `any` Successful Response
+     */
+    getMyReportsSessionsReportsMyGet: (params: RequestParams = {}) =>
+      this.request<any, any>({
+        path: `/sessions/reports/my`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * No description
      *
      * @tags Game Sessions

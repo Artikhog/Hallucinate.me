@@ -2,9 +2,9 @@ import {Button} from "@/shared/ui/shadcn/ui/button"
 import {Card, CardContent, CardHeader, CardTitle,} from "@/shared/ui/shadcn/ui/card"
 import {Input} from "@/shared/ui/shadcn/ui/input"
 import {Label} from "@/shared/ui/shadcn/ui/label"
-import type {LoginCredentials} from "@/features/auth/api/auth-api.ts";
 import {useAuthStore} from "@/features/auth/model/auth-context.ts";
 import {useRef} from "react";
+import type { UserLogin } from "@/shared/api/api"
 
 export function Login() {
 
@@ -24,9 +24,10 @@ export function Login() {
         }
 
         try {
-            await authStore.login({username, password} as LoginCredentials)
+            await authStore.login({username, password} as UserLogin)
             window.location.href = '/'
         } catch (err: any) {
+            console.log(err);
             alert('Login error. Try again')
         }
     }
@@ -47,11 +48,10 @@ export function Login() {
                 <form onSubmit={handle}>
                     <div className="flex flex-col gap-6">
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Электропочта</Label>
+                            <Label htmlFor="email">Имя</Label>
                             <Input
                                 id="email"
-                                type="email"
-                                placeholder="green@itmo.ru"
+                                placeholder="username"
                                 required
                                 ref={usernameRef}
                             />

@@ -13,21 +13,20 @@ import "@llamaindex/chat-ui/styles/markdown.css";
 import "@llamaindex/chat-ui/styles/pdf.css";
 import "@llamaindex/chat-ui/styles/editor.css";
 import { useState, useCallback, useEffect, useMemo } from "react";
-import {API_BASE_URL, tokenService} from "@/shared/api/base";
+import { API_BASE_URL, apiClient, tokenService } from "@/shared/api/base";
 import { Copy, Check, Send, Loader2, TriangleAlert } from "lucide-react";
 import { ReportModal } from "@/features/report/modal/report-modal";
 // import { useGetSessionInfoQuery } from "@/shared/api/queries/getSessionInfoQuery";
 import { useGetSessionMessagesQuery } from "@/shared/api/queries/getSessionMessagesQuery";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useReportHallucinationMutation } from "@/shared/api/queries/reportHallucinationMutation";
+import { Button } from "./ui/button";
+import { sendedReportStore } from "@/features/report/section/sendedReportStore";
+import type { ReportResult } from "@/features/report/list/report-card";
 
 export function ChatSection() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("id") || "";
-
-  console.log("sessionId", sessionId);
-
-  // const { data: session } = useGetSessionInfoQuery(sessionId || "");
 
   const { data: messages = [] } = useGetSessionMessagesQuery(sessionId || "");
 
@@ -68,7 +67,7 @@ export function ChatSection() {
               />
               <ChatInput.Submit className="absolute bottom-2 right-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
                 {handler.status === "streaming" ||
-                handler.status === "submitted" ? (
+                  handler.status === "submitted" ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
@@ -90,6 +89,11 @@ function CustomChatMessages() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  // Сообщение о галлюцинации
+  const [reportedMessageId, setReportedMessageId] = useState<string>();
+
+  const navigate = useNavigate();
+
   const handleCopy = async (message: Message) => {
     const textContent = message.parts
       .filter((part) => part.type === "text")
@@ -111,12 +115,15 @@ function CustomChatMessages() {
     setReportModalOpen(true);
   };
   const { mutate: reportHallucination } = useReportHallucinationMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      sendedReportStore.setResult(data as unknown as ReportResult);
       setReportModalOpen(false);
     },
   });
 
   const handleReportHallucinationSubmit = (_: Message, reason: string, sourceUrl: string) => {
+    setReportedMessageId(_.id);
+    sendedReportStore.setReport(reason);
     reportHallucination({ sessionId: sessionId || "", report: { incorrect_fact: reason, source_url: sourceUrl } });
     setReportModalOpen(false);
   };
@@ -149,7 +156,7 @@ function CustomChatMessages() {
                 </div>
               </ChatMessage.Avatar>
             )}
-            
+
             <div className={`flex min-w-0 flex-1 flex-col gap-2 items-end `}>
               {message.role !== "assistant" && (
                 <div className="rounded-xl px-4 py-2.5 w-full">
@@ -200,8 +207,6 @@ function CustomChatMessages() {
                 </>
               )}
             </div>
-            
-
           </ChatMessage>
         </div>
       ))}
@@ -327,9 +332,9 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
                       return prev.map((msg) =>
                         msg.id === assistantMessageId
                           ? {
-                              ...msg,
-                              parts: [{ type: "text", text: streamedContent }],
-                            }
+                            ...msg,
+                            parts: [{ type: "text", text: streamedContent }],
+                          }
                           : msg
                       );
                     });
@@ -364,9 +369,9 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
                       return prev.map((msg) =>
                         msg.id === assistantMessageId
                           ? {
-                              ...msg,
-                              parts: [{ type: "text", text: streamedContent }],
-                            }
+                            ...msg,
+                            parts: [{ type: "text", text: streamedContent }],
+                          }
                           : msg
                       );
                     });
@@ -393,11 +398,10 @@ function useChat(initialMessages: Message[], sessionId: string): ChatHandler {
           parts: [
             {
               type: "text",
-              text: `Ошибка: ${
-                error instanceof Error
-                  ? error.message
-                  : "Не удалось отправить сообщение"
-              }`,
+              text: `Ошибка: ${error instanceof Error
+                ? error.message
+                : "Не удалось отправить сообщение"
+                }`,
             },
           ],
         };

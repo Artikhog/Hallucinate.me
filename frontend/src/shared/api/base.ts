@@ -2,7 +2,6 @@ import { Api } from './api';
 
 // Базовый URL API
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/';
-
 // Создаем экземпляр axios
 export const apiClient = new Api({
     baseURL: API_BASE_URL,
@@ -22,3 +21,16 @@ export const tokenService = {
         localStorage.removeItem('accessToken');
     },
 };
+
+apiClient.instance.interceptors.request.use(
+    (config) => {
+        const token = tokenService.getAccessToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);

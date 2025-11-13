@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx';
-import { authApi, type LoginCredentials, type RegisterData, type AuthResponse } from '../api/auth-api';
-import {apiClient, tokenService} from '@/shared/api/base';
+import { authApi } from '../api/auth-api';
+import { apiClient, tokenService } from '@/shared/api/base';
+import type { TokenResponse, UserLogin, UserRegister } from '@/shared/api/api';
 
 export interface UserStats {
   total_score: number;
@@ -34,31 +35,16 @@ export class AuthStore {
   };
 
   // Async actions
-  login = async (credentials: LoginCredentials): Promise<void> => {
+  login = async (credentials: UserLogin): Promise<void> => {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      const data: AuthResponse = await authApi.login(credentials);
-
-      apiClient.instance.interceptors.request.use(
-          (config) => {
-            const token = data.access_token;
-            if (token) {
-              config.headers.Authorization = `Bearer ${token}`;
-            }
-            return config;
-          },
-          (error) => {
-            return Promise.reject(error);
-          }
-      );
-
+      const data: TokenResponse = await authApi.login(credentials);
+      console.log(data)
       await tokenService.setTokens(data.access_token);
-      const stats = await authApi.getStats();
 
       runInAction(() => {
-        this.userStats = stats;
         this.isAuthenticated = true;
         this.isLoading = false;
       });
@@ -71,12 +57,19 @@ export class AuthStore {
     }
   };
 
-  register = async (data: RegisterData): Promise<void> => {
+  getUserStats = async () => {
+    const stats = await authApi.getStats();
+    runInAction(() => {
+      this.userStats = stats;
+    });
+  }
+
+  register = async (data: UserRegister): Promise<void> => {
     try {
       this.setLoading(true);
       this.setError(null);
 
-      const response: AuthResponse = await authApi.register(data);
+      const response: TokenResponse = await authApi.register(data);
       await tokenService.setTokens(response.access_token);
 
       runInAction(() => {
@@ -115,17 +108,17 @@ export class AuthStore {
         return;
       }
       apiClient.instance.interceptors.request.use(
-          (config) => {
-            config.headers.Authorization = token;
-            return config;
-          },
-          (error) => {
-            return Promise.reject(error);
-          }
+        (config) => {
+          config.headers.Authorization = token;
+          return config;
+        },
+        (error) => {
+          return Promise.reject(error);
+        }
       );
 
       const user = await authApi.getStats();
-      
+
       runInAction(() => {
         this.userStats = user;
         this.isAuthenticated = true;
@@ -134,7 +127,7 @@ export class AuthStore {
     } catch (error) {
       // Если запрос профиля failed, очищаем токены
       // tokenService.clearTokens();
-      
+
       runInAction(() => {
         this.userStats = null;
         this.isAuthenticated = false;
